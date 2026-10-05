@@ -5,7 +5,10 @@ import {
   changePassword,
   CorruptedVaultError,
   createVault,
+  decryptLocalSecret,
+  encryptLocalSecret,
   MIN_ITERATIONS,
+  openPayload,
   openVault,
   parseEnvelope,
   sealVault,
@@ -73,6 +76,24 @@ describe('changePassword (F-VAULT-5)', () => {
     expect(changed.kdf.salt).not.toBe(envelope.kdf.salt);
     expect((await openVault(changed, 'new-password')).data).toEqual(sample);
     await expect(openVault(changed, 'old-password')).rejects.toBeInstanceOf(WrongPasswordError);
+  });
+});
+
+describe('DEK-only helpers (F-SYNC-4, F-SYNC-7, F-SYNC-8)', () => {
+  it('opens a payload sealed with the same DEK and rejects another vault', async () => {
+    const { envelope, dek } = await createVault('hunter2-long', sample, fast);
+    const resealed = await sealVault(envelope, dek, { ...sample, note: '晚饭' });
+    expect(await openPayload(resealed, dek)).toEqual({ ...sample, note: '晚饭' });
+    const other = await createVault('hunter2-long', sample, fast);
+    await expect(openPayload(other.envelope, dek)).rejects.toBeInstanceOf(CorruptedVaultError);
+  });
+
+  it('keeps local secrets separate from payloads', async () => {
+    const { envelope, dek } = await createVault('hunter2-long', sample, fast);
+    const blob = await encryptLocalSecret(dek, { token: 'github_pat_x' });
+    expect(JSON.stringify(blob)).not.toContain('github_pat_x');
+    expect(await decryptLocalSecret(dek, blob)).toEqual({ token: 'github_pat_x' });
+    await expect(openPayload({ ...envelope, payload: blob }, dek)).rejects.toBeInstanceOf(CorruptedVaultError);
   });
 });
 

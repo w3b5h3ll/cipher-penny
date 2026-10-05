@@ -2,6 +2,7 @@ import { addDays } from './dates';
 import { newId } from './id';
 import type {
   Account,
+  Deletion,
   Category,
   ISODate,
   RecurringRule,
@@ -41,31 +42,46 @@ export function updateTransaction(
   };
 }
 
-export function deleteTransaction(data: VaultData, id: string): VaultData {
-  return { ...data, transactions: data.transactions.filter((t) => t.id !== id) };
+/** Records a tombstone so sync merge drops the record on other devices too. */
+function withDeletion(data: VaultData, id: string, now: Date): Deletion[] {
+  const rest = (data.deletions ?? []).filter((d) => d.id !== id);
+  return [...rest, { id, deletedAt: now.toISOString() }];
 }
 
-function upsert<T extends { id: string }>(list: T[], item: T): T[] {
+export function deleteTransaction(data: VaultData, id: string, now: Date = new Date()): VaultData {
+  return {
+    ...data,
+    transactions: data.transactions.filter((t) => t.id !== id),
+    deletions: withDeletion(data, id, now),
+  };
+}
+
+function upsert<T extends { id: string; updatedAt?: string }>(list: T[], item: T, now: Date): T[] {
+  const stamped = { ...item, updatedAt: now.toISOString() };
   return list.some((x) => x.id === item.id)
-    ? list.map((x) => (x.id === item.id ? item : x))
-    : [...list, item];
+    ? list.map((x) => (x.id === item.id ? stamped : x))
+    : [...list, stamped];
 }
 
-export function upsertAccount(data: VaultData, account: Account): VaultData {
-  return { ...data, accounts: upsert(data.accounts, account) };
+export function upsertAccount(data: VaultData, account: Account, now: Date = new Date()): VaultData {
+  return { ...data, accounts: upsert(data.accounts, account, now) };
 }
 
-export function upsertCategory(data: VaultData, category: Category): VaultData {
-  return { ...data, categories: upsert(data.categories, category) };
+export function upsertCategory(data: VaultData, category: Category, now: Date = new Date()): VaultData {
+  return { ...data, categories: upsert(data.categories, category, now) };
 }
 
-export function upsertRecurring(data: VaultData, rule: RecurringRule): VaultData {
-  return { ...data, recurring: upsert(data.recurring, rule) };
+export function upsertRecurring(data: VaultData, rule: RecurringRule, now: Date = new Date()): VaultData {
+  return { ...data, recurring: upsert(data.recurring, rule, now) };
 }
 
 /** Removes the rule only; transactions it generated are kept (F-REC-4). */
-export function deleteRecurring(data: VaultData, id: string): VaultData {
-  return { ...data, recurring: data.recurring.filter((r) => r.id !== id) };
+export function deleteRecurring(data: VaultData, id: string, now: Date = new Date()): VaultData {
+  return {
+    ...data,
+    recurring: data.recurring.filter((r) => r.id !== id),
+    deletions: withDeletion(data, id, now),
+  };
 }
 
 /**
@@ -77,20 +93,26 @@ export function setRecurringActive(
   id: string,
   active: boolean,
   today: ISODate,
+  now: Date = new Date(),
 ): VaultData {
   const yesterday = addDays(today, -1);
+  const updatedAt = now.toISOString();
   return {
     ...data,
     recurring: data.recurring.map((r) => {
       if (r.id !== id) return r;
-      if (!active) return { ...r, active: false };
+      if (!active) return { ...r, active: false, updatedAt };
       const lastGenerated =
         r.lastGenerated && r.lastGenerated > yesterday ? r.lastGenerated : yesterday;
-      return { ...r, active: true, lastGenerated };
+      return { ...r, active: true, lastGenerated, updatedAt };
     }),
   };
 }
 
-export function updateSettings(data: VaultData, patch: Partial<Settings>): VaultData {
-  return { ...data, settings: { ...data.settings, ...patch } };
+export function updateSettings(
+  data: VaultData,
+  patch: Partial<Settings>,
+  now: Date = new Date(),
+): VaultData {
+  return { ...data, settings: { ...data.settings, ...patch, updatedAt: now.toISOString() } };
 }

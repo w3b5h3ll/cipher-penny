@@ -1,6 +1,6 @@
 # CipherPenny 技术设计（Design）
 
-> 状态：v0.2 · 对应需求：[spec.md](./spec.md) v0.2
+> 状态：v0.3 · 对应需求：[spec.md](./spec.md) v0.6
 
 ## 1. 总体架构
 
@@ -16,9 +16,11 @@
 │  （金额、日期、账本、      │ （KDF、密钥封装、加解密、文件格式）   │
 │   周期、统计、解析器）     │                                     │
 │                          storage/  IndexedDB（只存密文信封）     │
+│                          remote/   GitHub API（只收发密文信封）  │
 └────────────────────────────────────────────────────────────────┘
-         ▲ 静态文件（HTML/JS/CSS/SW）
-   GitHub Pages：只托管代码，永远接触不到数据
+         ▲ 静态文件（HTML/JS/CSS/SW）           │ 加密信封（可选同步）
+   GitHub Pages：只托管代码，永远接触不到数据    ▼
+                                    用户自己的 GitHub 私有仓库（只有密文）
 ```
 
 分层规则（由代码评审保证）：
@@ -26,8 +28,9 @@
 - `core/` 不依赖 DOM、React 和浏览器存储，可以在 Node 中直接测试。
 - 跨端（以后的 Flutter Android 应用）共享的是**格式规范和测试向量**，不是代码：[vault-format.md](./vault-format.md) 定义加密信封和数据结构，`fixtures/` 下的 JSON 向量由 TS 测试和以后的 Dart 测试共同使用。
 - `crypto/` 只依赖 `globalThis.crypto`（浏览器和 Node 都有）。
-- `storage/` 只读写密文信封，不知道明文结构。
-- `ui/` 不直接调用 `crypto/` 或 `storage/`，统一经过 `state/`。
+- `storage/` 只读写密文（信封、用 DEK 加密的同步配置），不知道明文结构。
+- `remote/` 只负责和 GitHub API 收发文本，不依赖 `core/`，不知道明文结构。
+- `ui/` 不直接调用 `crypto/`、`storage/` 或 `remote/`，统一经过 `state/`。以上规则由 ESLint 的 `no-restricted-imports` 强制。
 
 ## 2. 技术选型与决策记录
 
@@ -43,6 +46,7 @@
 | D8 自然语言解析 | 本地规则解析器 | 离线、零成本、可预测、可测试；大模型解析作为以后的可选增强。 |
 | D9 视觉规范 | 原生 CSS，变量取值参考 **TDesign 设计令牌**；不引入任何组件库 | 比较过的方案：**Ant Design** 的 CSS-in-JS 会在运行时注入 `<style>`，必须放开 CSP 的 `style-src 'unsafe-inline'`，而且是大体积运行时依赖；**IBM Carbon** 偏英文企业风格，中文排版考虑少；Arco、Semi 和 TDesign 类似，但没有 Flutter 版。**TDesign** 以中文场景为先，同时有桌面和移动端规范，而且有官方的 **TDesign Flutter**，以后 Android 版可以直接用它的组件，两端视觉一致。只借用令牌而不装 `tdesign-react`，既保持了零第三方运行时依赖和严格 CSP，也不受组件库升级影响。品牌色沿用图标的琥珀色（取 TDesign 橙色色板），功能色（成功、错误）、中性灰、圆角、字号、阴影都用 TDesign 的取值。 |
 | D11 字体 | 用 Fontsource 自托管 Inter、思源黑体（Noto Sans SC）、JetBrains Mono 的可变字体 | CSP 只允许同源资源，国内也访问不了 Google Fonts，所以必须自托管。字体包只包含 woff2 和 CSS，不含 JS，放在 `devDependencies`，构建时打包进 `dist/`。思源黑体按 unicode-range 切成约 100 片（共 4.5 MB），浏览器只下载页面用到的切片。可变字体比静态 400 + 600 两个字重（7.4 MB）更小。`font-family` 中把本机的 `Source Han Sans SC` 和 `Noto Sans CJK SC` 排在网络字体前面，本机装了就不会下载。字体不放进 Service Worker 的预缓存，改为运行时 CacheFirst 缓存，避免首次安装就下载全部中文切片。 |
+| D12 同步 | 用户自己的 GitHub **私有**仓库（与代码仓库分开），通过 REST Contents API 读写同一个加密信封文件；按单条记录合并（规则见 vault-format.md 第 5 节） | 比较过的方案：**放进公开的代码仓库**：密文虽然安全，但任何人都能下载后离线暴力破解主密码，还能从提交历史看出记账时间和频率；而且令牌必须有代码仓库的写权限，令牌泄露等于网站代码可以被篡改（GitHub Pages 会直接部署），所以排除。**WebDAV（坚果云）**：国内访问好，但浏览器跨域受限，需要代理。**整份文件“后写入者胜”**：实现最简单，但两台设备离线各记一笔就会丢一笔。**按记录合并**：每条记录带 `updatedAt`，删除留删除记录，周期账单用确定性 ID，两端独立合并得到同样的结果；代价是格式多了几条约定，Flutter 端也要实现同样的规则，所以合并用例写成了 `fixtures/merge-cases.json`。GitHub API 支持 CORS，纯前端即可调用，不需要后端；写入时带上 blob `sha`，并发写入会被拒绝，读取、合并后重试。 |
 | D10 跨端互通 | 格式规范 + JSON 测试向量 | 加密格式只用 PBKDF2、AES-GCM、标准 Base64 这类各语言都有标准实现的原语（Dart 可用 `cryptography` 包）。解析器的期望行为也以 JSON 用例描述，Dart 版本跑同一份用例即可对齐。 |
 
 ## 3. 数据模型（明文，仅存在于内存）
@@ -73,7 +77,8 @@ interface RecurringRule {
 ```
 
 - 金额恒为正数，收支方向由 `type` 决定。
-- ID 使用 `crypto.randomUUID()`。
+- ID 使用 `crypto.randomUUID()`；周期规则生成的账单用确定性 ID `<规则 id>:<日期>`（见 D12）。
+- 为了同步合并，账户、分类、规则和设置还有可选的 `updatedAt`，顶层有可选的 `deletions`（删除记录），由 `core/ledger.ts` 在修改和删除时写入。完整定义见 vault-format.md。
 - `schemaVersion` 用于以后的数据迁移（`core/migrate.ts`）。
 
 ## 4. 加密设计
@@ -105,7 +110,10 @@ JSON.stringify(VaultData) ──▶ 密文 payload
 
 | 威胁 | 是否防护 | 说明 |
 | --- | --- | --- |
-| 他人拿到设备的浏览器数据或备份文件 | ✅ | 只有密文；强度取决于主密码。 |
+| 他人拿到设备的浏览器数据或备份文件 | ✅ | 只有密文；强度取决于主密码。同步令牌也用 DEK 加密保存，锁定状态下拿不到。 |
+| 同步仓库被他人读取（仓库被误设为公开、GitHub 账号被盗） | ⚠️ 部分 | 只有密文，但对方可以离线暴力破解主密码，并能看到提交时间。开启同步时拒绝公开仓库；主密码要足够长。 |
+| 同步令牌泄露 | ⚠️ 部分 | 建议的 fine-grained 令牌只能读写这一个数据仓库：对方能删除或覆盖同步文件，但读不到明文，也碰不到网站代码。被覆盖后本机数据仍在，可用“用本机数据覆盖”恢复，旧版本也在提交历史里。 |
+| 另一台设备推送了无法解密的文件 | ✅ | 远端无法用本机 DEK 解密时停止同步，不会自动覆盖任何一边（F-SYNC-7）。 |
 | GitHub Pages 或同步端读取数据 | ✅ | 它们只有代码或密文。 |
 | 密文被篡改 | ✅ | GCM 认证失败，拒绝加载。 |
 | 解锁状态下有人拿到手机 | ⚠️ 部分 | 自动锁定缩短暴露窗口。 |
@@ -127,8 +135,11 @@ JSON.stringify(VaultData) ──▶ 密文 payload
 | `core/csv.ts` | CSV 导出（F-IO-3）。 |
 | `core/parser/` | 自然语言解析（F-QA），细分为中文数字、金额、日期、分类匹配。 |
 | `crypto/vault-crypto.ts` | 创建、打开、重新保存、修改密码、信封校验（F-VAULT）。 |
-| `storage/idb.ts` | 极简 IndexedDB 键值封装。 |
-| `state/session.ts` | 会话状态机（加载中 → 空 / 已锁定 → 已解锁），对外提供 `useSession()`。 |
+| `core/merge.ts` | 两份账本的按记录合并（F-SYNC-4），规则见 vault-format.md 第 5.1 节。 |
+| `storage/idb.ts` | 极简 IndexedDB 键值封装：`vault` 存信封，`sync` 存用 DEK 加密的同步配置（仓库、令牌、同步游标）。 |
+| `remote/github.ts` | GitHub REST API：检查仓库是否私有、读取文件（超过 1 MB 时改用 blob API）、带 `sha` 写入；HTTP 错误映射成中文提示。 |
+| `state/sync.ts` | 一轮同步：读取远端 → 无变化 / 直接推送 / 解密合并后推送，写入冲突时最多重试 3 次（F-SYNC-4、F-SYNC-5、F-SYNC-7）。 |
+| `state/session.ts` | 会话状态机（加载中 → 空 / 已锁定 → 已解锁），对外提供 `useSession()`；负责同步的触发、串行化和结果落地。 |
 | `ui/` | 页面和组件。 |
 
 ### 会话状态机
@@ -140,7 +151,20 @@ loading ──有信封──▶ locked ──正确密码──▶ unlocked ─
 
 - 修改数据：`session.update(fn)` 先更新内存中的状态并通知界面，再用 300 ms 防抖加密保存；页面隐藏（`visibilitychange`）时立即保存。
 - 自动锁定：监听 `pointerdown`、`keydown`、`visibilitychange`，超时后先保存再锁定。
-- 解锁成功后执行周期账单补齐（F-REC-2）。
+- 解锁成功后执行周期账单补齐（F-REC-2）。开启同步时先同步一次再补齐，这样另一台设备已经补齐或删除的账单不会被重复生成。
+
+### 同步流程（F-SYNC）
+
+每台设备在本地记一个同步游标：上次同步后远端文件的 `sha`、本地信封的 payload IV（每次保存都会换新 IV，用来判断本机有没有修改），以及本机是否改过密码。一轮同步：
+
+1. 先把待保存的修改写入本地。
+2. 读取远端文件。不存在 → 推送本地信封。
+3. 远端 `sha` 与游标相同 → 本机没改就什么都不做，改了就直接推送。
+4. 远端变了 → 用内存中的 DEK 解密远端 payload（失败则报“另一个账本”，停止同步），与本地数据合并，按 vault-format.md 第 5.2 节选择 `kdf`/`wrappedKey`，重新加密后带上远端 `sha` 推送；合并结果与远端相同时只拉取不推送。
+5. 推送遇到冲突（期间别的设备也推送了）就回到第 2 步，最多 3 次。
+6. 合并结果写回本地；如果同步期间用户又改了数据，再把这些修改合并进去并照常保存，下一轮同步会推送。
+
+触发时机：解锁后、每次保存后 10 秒（期间的多次保存合并成一次）、页面回到前台、网络恢复、手动“立即同步”；锁定前如有待同步的修改，最多等 5 秒。同一时间只跑一轮，期间的新请求排在后面再跑一轮。
 
 ## 6. 自然语言解析器
 

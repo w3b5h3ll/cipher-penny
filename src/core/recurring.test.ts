@@ -74,6 +74,18 @@ describe('applyRecurring (F-REC-2, F-REC-5)', () => {
     expect(second.data).toBe(first);
   });
 
+  it('uses deterministic ids and the occurrence date as updatedAt (vault-format §3)', () => {
+    const { data } = applyRecurring(
+      vaultWith(rule({ startDate: '2026-10-05' })),
+      '2026-10-05',
+      new Date('2026-10-07T12:00:00Z'),
+    );
+    const tx = data.transactions[0]!;
+    expect(tx.id).toBe('r1:2026-10-05');
+    expect(tx.createdAt).toBe('2026-10-07T12:00:00.000Z');
+    expect(tx.updatedAt).toBe(new Date(2026, 9, 5).toISOString());
+  });
+
   it('does not duplicate when lastGenerated was lost', () => {
     const first = applyRecurring(vaultWith(rule({ startDate: '2026-08-05' })), '2026-10-05').data;
     const reset: VaultData = { ...first, recurring: first.recurring.map((r) => ({ ...r, lastGenerated: undefined })) };

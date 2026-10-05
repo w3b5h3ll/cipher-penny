@@ -9,6 +9,7 @@ import { Field } from '../components/controls';
 import { downloadText, errorMessage } from '../download';
 import { useVault } from '../hooks';
 import { ImportBackup } from './ImportBackup';
+import { SyncSection } from './SyncScreens';
 
 function AccountEditor({ account, onDone }: { account?: Account; onDone: () => void }) {
   const [name, setName] = useState(account?.name ?? '');
@@ -317,7 +318,7 @@ function DangerSection() {
       <ul className="muted small bullets">
         <li>
           账本只以 <code>AES-256-GCM</code> 密文保存在本机浏览器（IndexedDB）中，密钥由主密码经{' '}
-          <code>PBKDF2-SHA256</code> 派生，不会上传到任何服务器。
+          <code>PBKDF2-SHA256</code> 派生。主密码和明文不会上传到任何服务器；开启同步后，只有密文会上传到你自己的 GitHub 私有仓库。
         </li>
         <li>
           快捷记账链接：在网址后加 <code>#/add?text=午饭25</code>，打开并解锁后直接显示识别结果，可做成桌面快捷方式。
@@ -340,6 +341,7 @@ export function SettingsScreen() {
       <AccountsSection />
       <CategoriesSection />
       <SecuritySection />
+      <SyncSection />
       <BackupSection />
       <DangerSection />
     </div>

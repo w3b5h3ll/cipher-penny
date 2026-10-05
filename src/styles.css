@@ -499,6 +499,16 @@ button.block {
   background: none;
 }
 
+.topbar .sync-alert {
+  min-height: 24px;
+  padding: 0 8px;
+  border-color: var(--td-error-color);
+  color: var(--td-error-color);
+  background: var(--td-error-color-light);
+  font-size: var(--td-font-size-mark-small);
+  white-space: nowrap;
+}
+
 @media (max-width: 560px) {
   .logo span {
     display: none;

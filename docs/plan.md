@@ -43,6 +43,15 @@
 - [x] 视觉规范与字体（N-UX-3、N-UX-4）（浏览器实测：CSP 下三种字体加载无违规；本机有思源黑体时不下载中文字体；字体进入运行时缓存；浅色和深色模式）
 - [x] Service Worker 更新（浏览器实测：新构建会自动激活，不再停在 waiting）
 
+### 同步（spec v0.6，F-SYNC）
+
+- [x] 规格和格式：F-SYNC 需求；vault-format.md 增加 `updatedAt`、删除记录、确定性周期账单 ID 和合并规则（第 5 节）
+- [x] 合并逻辑（F-SYNC-4）（`merge.test.ts`，用例在 `fixtures/merge-cases.json`）；修改和删除记录时写入 `updatedAt` 和删除记录
+- [x] GitHub 客户端：检查私有仓库、读写文件、大文件回退、冲突识别（`github.test.ts`）
+- [x] 同步流程：首次推送、无变化不提交、合并、冲突重试、他人账本、改密码传播、新设备恢复、令牌加密保存（`sync.test.ts`）
+- [x] 设置页“同步”区块、首页“从 GitHub 恢复”、顶栏同步失败提示；CSP 放行 `https://api.github.com`（浏览器实测：生产构建下请求能到达 GitHub，无效令牌显示正确提示）
+- [ ] 用真实私有仓库和令牌在两个浏览器之间同步（需要 Paul 创建令牌）
+
 ### 验收
 
 - [x] `pnpm check` 全部通过（类型检查、lint、测试、构建）
@@ -55,12 +64,11 @@
 - [x] 部署到 GitHub Pages：<https://w3b5h3ll.github.io/cipher-penny/>（CI 的 check 和 deploy 均通过；线上确认 CSP、manifest、Service Worker 生效）
 - [ ] 在 Android Chrome 上验证并安装为 PWA
 
-## M2 之后（待 spec 第 8 节的问题确认后细化）
+## 之后（待 spec 第 8 节的问题确认后细化）
 
-- [ ] 同步：GitHub 私有仓库或 WebDAV，同步的只是加密信封；需要设计冲突处理
 - [ ] 恢复码
 - [ ] 可选的大模型解析（用户自备 API key，key 同样加密保存）
 - [ ] 账户间转账、信用卡还款
 - [ ] 预算与超支提醒
 - [ ] 导入支付宝、微信账单 CSV 进行对账
-- [ ] Flutter Android 应用（独立仓库）：按 vault-format.md 实现格式读写，跑通 `fixtures/` 下的全部测试向量；需要先确定同步方案
+- [ ] Flutter Android 应用（独立仓库）：按 vault-format.md 实现格式读写，跑通 `fixtures/` 下的全部测试向量（包括合并用例），通过同一个 GitHub 私有仓库与 Web 端同步

@@ -11,6 +11,7 @@ const SALT_BYTES = 16;
 const IV_BYTES = 12;
 const AAD_DEK = new TextEncoder().encode('cipher-penny:v1:dek');
 const AAD_PAYLOAD = new TextEncoder().encode('cipher-penny:v1:payload');
+const AAD_LOCAL_SECRET = new TextEncoder().encode('cipher-penny:v1:local-secret');
 
 export interface CipherBlob {
   iv: string;
@@ -75,11 +76,33 @@ async function wrapDek(dek: CryptoKey, password: string, iterations: number) {
   };
 }
 
-async function encryptPayload(dek: CryptoKey, data: unknown): Promise<CipherBlob> {
+async function encryptJson(dek: CryptoKey, aad: Uint8Array<ArrayBuffer>, data: unknown): Promise<CipherBlob> {
   const iv = randomBytes(IV_BYTES);
   const plaintext = new TextEncoder().encode(JSON.stringify(data));
-  const ciphertext = await subtle().encrypt({ name: 'AES-GCM', iv, additionalData: AAD_PAYLOAD }, dek, plaintext);
+  const ciphertext = await subtle().encrypt({ name: 'AES-GCM', iv, additionalData: aad }, dek, plaintext);
   return { iv: bytesToBase64(iv), data: bytesToBase64(new Uint8Array(ciphertext)) };
+}
+
+async function decryptJson(dek: CryptoKey, aad: Uint8Array<ArrayBuffer>, blob: CipherBlob): Promise<unknown> {
+  let plaintext: ArrayBuffer;
+  try {
+    plaintext = await subtle().decrypt(
+      { name: 'AES-GCM', iv: base64ToBytes(blob.iv), additionalData: aad },
+      dek,
+      base64ToBytes(blob.data),
+    );
+  } catch {
+    throw new CorruptedVaultError();
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(plaintext)) as unknown;
+  } catch {
+    throw new CorruptedVaultError('Decrypted payload is not valid JSON');
+  }
+}
+
+function encryptPayload(dek: CryptoKey, data: unknown): Promise<CipherBlob> {
+  return encryptJson(dek, AAD_PAYLOAD, data);
 }
 
 export interface CreateOptions {
@@ -126,21 +149,24 @@ export async function openVault(envelope: Envelope, password: string): Promise<{
   } catch {
     throw new WrongPasswordError();
   }
-  let plaintext: ArrayBuffer;
-  try {
-    plaintext = await subtle().decrypt(
-      { name: 'AES-GCM', iv: base64ToBytes(payload.iv), additionalData: AAD_PAYLOAD },
-      dek,
-      base64ToBytes(payload.data),
-    );
-  } catch {
-    throw new CorruptedVaultError();
-  }
-  try {
-    return { data: JSON.parse(new TextDecoder().decode(plaintext)) as unknown, dek };
-  } catch {
-    throw new CorruptedVaultError('Decrypted payload is not valid JSON');
-  }
+  return { data: await decryptJson(dek, AAD_PAYLOAD, payload), dek };
+}
+
+/**
+ * Decrypts a payload with an already-unlocked DEK (sync merge, F-SYNC-4).
+ * Throws CorruptedVaultError if the envelope belongs to a different vault (F-SYNC-7).
+ */
+export function openPayload(envelope: Envelope, dek: CryptoKey): Promise<unknown> {
+  return decryptJson(dek, AAD_PAYLOAD, envelope.payload);
+}
+
+/** Encrypts device-local data (e.g. the sync token) under the DEK; never synced or exported. */
+export function encryptLocalSecret(dek: CryptoKey, value: unknown): Promise<CipherBlob> {
+  return encryptJson(dek, AAD_LOCAL_SECRET, value);
+}
+
+export function decryptLocalSecret(dek: CryptoKey, blob: CipherBlob): Promise<unknown> {
+  return decryptJson(dek, AAD_LOCAL_SECRET, blob);
 }
 
 /** Re-encrypts data with a fresh IV, keeping the KDF header and wrapped key. */

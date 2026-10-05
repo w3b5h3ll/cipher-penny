@@ -22,9 +22,10 @@ pnpm check            # typecheck + lint + test + build，提交前必须通过
 
 - `src/core/`：纯函数领域逻辑。**禁止**引用 React、DOM、IndexedDB。
 - `src/crypto/`：只依赖 WebCrypto（`globalThis.crypto`）。
-- `src/storage/`：只读写密文信封。
-- `src/state/`：会话状态，UI 访问数据的唯一入口。
-- `src/ui/`：React 界面。不直接调用 `crypto/` 或 `storage/`。
+- `src/storage/`：只读写密文（加密信封、用数据密钥加密的同步配置）。
+- `src/remote/`：GitHub API 客户端，只收发密文信封。不依赖 `core/`。
+- `src/state/`：会话状态和同步流程，UI 访问数据的唯一入口。
+- `src/ui/`：React 界面。不直接调用 `crypto/`、`storage/` 或 `remote/`。
 - 测试与源码放在一起：`foo.ts` 对应 `foo.test.ts`。
 
 ## 跨端格式
@@ -47,8 +48,8 @@ pnpm check            # typecheck + lint + test + build，提交前必须通过
 - 禁止 `dangerouslySetInnerHTML`、`innerHTML`、`eval`、`new Function`。
 - 不得新增运行时依赖（`dependencies`），除非在 `docs/design.md` 的决策记录中写明理由。
 - 加密只用 WebCrypto；不要自己实现加密原语，不要使用固定 IV。
-- 明文数据和密钥不得写入 `localStorage`、IndexedDB、日志或 URL。
-- 不得向第三方域名发起网络请求。
+- 明文数据、密钥和同步令牌不得以明文写入 `localStorage`、IndexedDB、日志或 URL。
+- 除同步用的 `https://api.github.com` 外，不得向第三方域名发起网络请求；发往 GitHub 的只能是加密信封。
 
 ## 完成的定义
 

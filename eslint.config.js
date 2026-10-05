@@ -37,7 +37,7 @@ export default tseslint.config(
   {
     files: ['src/ui/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: ['*/crypto/*', '*/storage/*'] }],
+      'no-restricted-imports': ['error', { patterns: ['*/crypto/*', '*/storage/*', '*/remote/*'] }],
     },
   },
   {
@@ -45,7 +45,16 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: ['react', 'react-dom', '*/ui/*', '*/state/*', '*/storage/*'] },
+        { patterns: ['react', 'react-dom', '*/ui/*', '*/state/*', '*/storage/*', '*/remote/*'] },
+      ],
+    },
+  },
+  {
+    files: ['src/remote/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: ['react', 'react-dom', '*/ui/*', '*/state/*', '*/storage/*', '*/core/*'] },
       ],
     },
   },

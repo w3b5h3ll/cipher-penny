@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { session } from '../state/session';
+import { session, type SyncView } from '../state/session';
 import { useSession } from './hooks';
 import { matchPath, navigate, useRoute, type Route } from './router';
 import { SetupScreen, UnlockScreen } from './screens/AuthScreens';
@@ -30,7 +30,15 @@ function renderRoute({ path, query }: Route) {
   return <HomeScreen />;
 }
 
-function UnlockedShell({ recurringCreated, saveError }: { recurringCreated: number; saveError?: string }) {
+function UnlockedShell({
+  recurringCreated,
+  saveError,
+  sync,
+}: {
+  recurringCreated: number;
+  saveError?: string;
+  sync: SyncView;
+}) {
   const route = useRoute();
   const [showRecurringNotice, setShowRecurringNotice] = useState(recurringCreated > 0);
 
@@ -48,6 +56,11 @@ function UnlockedShell({ recurringCreated, saveError }: { recurringCreated: numb
             </a>
           ))}
         </nav>
+        {sync.configured && sync.error ? (
+          <button type="button" className="sync-alert" onClick={() => navigate('/settings')} title={sync.error}>
+            同步失败
+          </button>
+        ) : null}
         <button type="button" className="icon-btn lock" onClick={() => void session.lock()} title="立即锁定" aria-label="立即锁定">
           🔒
         </button>
@@ -85,6 +98,6 @@ export function App() {
     case 'locked':
       return <UnlockScreen />;
     case 'unlocked':
-      return <UnlockedShell recurringCreated={state.recurringCreated} saveError={state.saveError} />;
+      return <UnlockedShell recurringCreated={state.recurringCreated} saveError={state.saveError} sync={state.sync} />;
   }
 }

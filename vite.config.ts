@@ -11,7 +11,7 @@ const CSP = [
   "script-src 'self'",
   "style-src 'self'",
   "img-src 'self' data: blob:",
-  "connect-src 'self'",
+  "connect-src 'self' https://api.github.com",
   "worker-src 'self'",
   "manifest-src 'self'",
   "object-src 'none'",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { toCSV } from './csv';
 import { createDefaultVault } from './defaults';
-import { addTransactions, deleteTransaction, updateTransaction } from './ledger';
+import { addTransactions, deleteTransaction, updateSettings, updateTransaction, upsertAccount } from './ledger';
 import type { TransactionInput, VaultData } from './model';
 import {
   daysElapsed,
@@ -150,6 +150,25 @@ describe('ledger (F-TX-1, F-TX-3)', () => {
     expect(updated.transactions[0]!.updatedAt).toBe('2026-10-06T00:00:00.000Z');
     expect(data.transactions[0]!.amount).toBe(3500);
     expect(deleteTransaction(updated, target.id).transactions).toHaveLength(4);
+  });
+
+  it('leaves a single tombstone per deleted id (vault-format §3)', () => {
+    const { data } = setup();
+    const id = data.transactions[0]!.id;
+    const once = deleteTransaction(data, id, new Date('2026-10-06T00:00:00Z'));
+    const twice = deleteTransaction(once, id, new Date('2026-10-07T00:00:00Z'));
+    expect(twice.deletions).toEqual([{ id, deletedAt: '2026-10-07T00:00:00.000Z' }]);
+  });
+
+  it('stamps updatedAt on upserts and settings', () => {
+    const { data } = setup();
+    const now = new Date('2026-10-06T00:00:00Z');
+    const account = { ...data.accounts[0]!, name: '零钱' };
+    expect(upsertAccount(data, account, now).accounts[0]).toEqual({ ...account, updatedAt: now.toISOString() });
+    expect(updateSettings(data, { autoLockMinutes: 1 }, now).settings).toEqual({
+      autoLockMinutes: 1,
+      updatedAt: now.toISOString(),
+    });
   });
 });
 

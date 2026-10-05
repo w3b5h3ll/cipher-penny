@@ -3,6 +3,7 @@ import { CorruptedVaultError, session, WrongPasswordError } from '../../state/se
 import { errorMessage } from '../download';
 import { Field } from '../components/controls';
 import { ImportBackup } from './ImportBackup';
+import { RestoreFromGitHub } from './SyncScreens';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -23,7 +24,7 @@ export function SetupScreen() {
   const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [restoring, setRestoring] = useState(false);
+  const [restoring, setRestoring] = useState<'backup' | 'github' | null>(null);
 
   const tooShort = password.length > 0 && password.length < MIN_PASSWORD_LENGTH;
   const mismatch = confirm.length > 0 && password !== confirm;
@@ -44,11 +45,16 @@ export function SetupScreen() {
 
   return (
     <main className="auth">
-      <Brand subtitle="端到端加密的个人记账本。数据只保存在这台设备的浏览器里。" />
-      {restoring ? (
+      <Brand subtitle="端到端加密的个人记账本。数据加密保存在这台设备的浏览器里，也可以加密同步到你自己的 GitHub 私有仓库。" />
+      {restoring === 'backup' ? (
         <section className="card">
           <h2>从备份恢复</h2>
-          <ImportBackup onCancel={() => setRestoring(false)} />
+          <ImportBackup onCancel={() => setRestoring(null)} />
+        </section>
+      ) : restoring === 'github' ? (
+        <section className="card">
+          <h2>从 GitHub 恢复</h2>
+          <RestoreFromGitHub onCancel={() => setRestoring(null)} />
         </section>
       ) : (
         <form className="card" onSubmit={submit}>
@@ -78,8 +84,11 @@ export function SetupScreen() {
           <button type="submit" className="primary block" disabled={!canSubmit}>
             {busy ? '正在生成密钥…' : '创建加密账本'}
           </button>
-          <button type="button" className="link block" onClick={() => setRestoring(true)}>
+          <button type="button" className="link block" onClick={() => setRestoring('backup')}>
             已有备份文件？从备份恢复
+          </button>
+          <button type="button" className="link block" onClick={() => setRestoring('github')}>
+            已在其他设备开启同步？从 GitHub 恢复
           </button>
         </form>
       )}

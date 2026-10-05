@@ -1,0 +1,190 @@
+{
+  "description": "merge(base, other) cases for docs/vault-format.md §5.1. Omitted arrays are empty, omitted settings is {\"autoLockMinutes\": 5}, omitted deletions is empty.",
+  "cases": [
+    {
+      "name": "additions on both sides are kept, base order first",
+      "base": {
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-01T01:00:00.000Z" }
+        ]
+      },
+      "other": {
+        "transactions": [
+          { "id": "t2", "type": "expense", "amount": 200, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T02:00:00.000Z", "updatedAt": "2026-10-01T02:00:00.000Z" }
+        ]
+      },
+      "expected": {
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-01T01:00:00.000Z" },
+          { "id": "t2", "type": "expense", "amount": 200, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T02:00:00.000Z", "updatedAt": "2026-10-01T02:00:00.000Z" }
+        ]
+      }
+    },
+    {
+      "name": "the record with the later updatedAt wins on each side",
+      "base": {
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-02T00:00:00.000Z" },
+          { "id": "t2", "type": "expense", "amount": 300, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-01T01:00:00.000Z" }
+        ]
+      },
+      "other": {
+        "transactions": [
+          { "id": "t2", "type": "expense", "amount": 350, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "改过", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-03T00:00:00.000Z" },
+          { "id": "t1", "type": "expense", "amount": 200, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-01T05:00:00.000Z" }
+        ]
+      },
+      "expected": {
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-02T00:00:00.000Z" },
+          { "id": "t2", "type": "expense", "amount": 350, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "改过", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-03T00:00:00.000Z" }
+        ]
+      }
+    },
+    {
+      "name": "equal updatedAt is resolved by the larger JSON serialization",
+      "base": {
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "a", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-01T01:00:00.000Z" }
+        ]
+      },
+      "other": {
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "b", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-01T01:00:00.000Z" }
+        ]
+      },
+      "expected": {
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "b", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-01T01:00:00.000Z" }
+        ]
+      }
+    },
+    {
+      "name": "a deletion removes the older copy from the other side",
+      "base": {
+        "deletions": [{ "id": "t1", "deletedAt": "2026-10-03T00:00:00.000Z" }]
+      },
+      "other": {
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-01T01:00:00.000Z" }
+        ]
+      },
+      "expected": {
+        "deletions": [{ "id": "t1", "deletedAt": "2026-10-03T00:00:00.000Z" }]
+      }
+    },
+    {
+      "name": "an edit made after the deletion survives",
+      "base": {
+        "deletions": [{ "id": "t1", "deletedAt": "2026-10-03T00:00:00.000Z" }]
+      },
+      "other": {
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-04T00:00:00.000Z" }
+        ]
+      },
+      "expected": {
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-04T00:00:00.000Z" }
+        ],
+        "deletions": [{ "id": "t1", "deletedAt": "2026-10-03T00:00:00.000Z" }]
+      }
+    },
+    {
+      "name": "tombstones are unioned, keeping the latest deletedAt",
+      "base": {
+        "deletions": [
+          { "id": "x", "deletedAt": "2026-10-01T00:00:00.000Z" },
+          { "id": "y", "deletedAt": "2026-10-01T00:00:00.000Z" }
+        ]
+      },
+      "other": {
+        "deletions": [
+          { "id": "x", "deletedAt": "2026-10-05T00:00:00.000Z" },
+          { "id": "z", "deletedAt": "2026-10-02T00:00:00.000Z" }
+        ]
+      },
+      "expected": {
+        "deletions": [
+          { "id": "x", "deletedAt": "2026-10-05T00:00:00.000Z" },
+          { "id": "y", "deletedAt": "2026-10-01T00:00:00.000Z" },
+          { "id": "z", "deletedAt": "2026-10-02T00:00:00.000Z" }
+        ]
+      }
+    },
+    {
+      "name": "a recurring rule keeps the later lastGenerated even when the other copy wins",
+      "base": {
+        "recurring": [
+          { "id": "r1", "name": "iCloud", "type": "expense", "amount": 2100, "categoryId": "c1", "accountId": "a1", "note": "", "frequency": "monthly", "interval": 1, "startDate": "2026-08-05", "active": true, "lastGenerated": "2026-09-05", "updatedAt": "2026-10-02T00:00:00.000Z" }
+        ]
+      },
+      "other": {
+        "recurring": [
+          { "id": "r1", "name": "iCloud", "type": "expense", "amount": 1800, "categoryId": "c1", "accountId": "a1", "note": "", "frequency": "monthly", "interval": 1, "startDate": "2026-08-05", "active": true, "lastGenerated": "2026-10-05", "updatedAt": "2026-10-01T00:00:00.000Z" }
+        ]
+      },
+      "expected": {
+        "recurring": [
+          { "id": "r1", "name": "iCloud", "type": "expense", "amount": 2100, "categoryId": "c1", "accountId": "a1", "note": "", "frequency": "monthly", "interval": 1, "startDate": "2026-08-05", "active": true, "lastGenerated": "2026-10-05", "updatedAt": "2026-10-02T00:00:00.000Z" }
+        ]
+      }
+    },
+    {
+      "name": "transactions generated twice for the same rule and date collapse to one",
+      "base": {
+        "transactions": [
+          { "id": "old1", "type": "expense", "amount": 2100, "categoryId": "c1", "accountId": "a1", "date": "2026-09-05", "note": "iCloud", "createdAt": "2026-09-05T01:00:00.000Z", "updatedAt": "2026-09-05T01:00:00.000Z", "recurringId": "r1" },
+          { "id": "aaa", "type": "expense", "amount": 2100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-05", "note": "iCloud", "createdAt": "2026-10-05T01:00:00.000Z", "updatedAt": "2026-10-04T16:00:00.000Z", "recurringId": "r1" }
+        ]
+      },
+      "other": {
+        "transactions": [
+          { "id": "r1:2026-09-05", "type": "expense", "amount": 2000, "categoryId": "c1", "accountId": "a1", "date": "2026-09-05", "note": "iCloud", "createdAt": "2026-09-06T01:00:00.000Z", "updatedAt": "2026-09-10T00:00:00.000Z", "recurringId": "r1" },
+          { "id": "r1:2026-10-05", "type": "expense", "amount": 2100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-05", "note": "iCloud", "createdAt": "2026-10-06T01:00:00.000Z", "updatedAt": "2026-10-04T16:00:00.000Z", "recurringId": "r1" }
+        ]
+      },
+      "expected": {
+        "transactions": [
+          { "id": "aaa", "type": "expense", "amount": 2100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-05", "note": "iCloud", "createdAt": "2026-10-05T01:00:00.000Z", "updatedAt": "2026-10-04T16:00:00.000Z", "recurringId": "r1" },
+          { "id": "r1:2026-09-05", "type": "expense", "amount": 2000, "categoryId": "c1", "accountId": "a1", "date": "2026-09-05", "note": "iCloud", "createdAt": "2026-09-06T01:00:00.000Z", "updatedAt": "2026-09-10T00:00:00.000Z", "recurringId": "r1" }
+        ]
+      }
+    },
+    {
+      "name": "records without updatedAt lose to edited copies",
+      "base": {
+        "accounts": [{ "id": "a1", "name": "现金", "kind": "cash", "initialBalance": 0, "archived": false }],
+        "settings": { "autoLockMinutes": 5 }
+      },
+      "other": {
+        "accounts": [{ "id": "a1", "name": "零钱", "kind": "cash", "initialBalance": 0, "archived": false, "updatedAt": "2026-10-01T00:00:00.000Z" }],
+        "settings": { "autoLockMinutes": 1, "updatedAt": "2026-10-02T00:00:00.000Z" }
+      },
+      "expected": {
+        "accounts": [{ "id": "a1", "name": "零钱", "kind": "cash", "initialBalance": 0, "archived": false, "updatedAt": "2026-10-01T00:00:00.000Z" }],
+        "settings": { "autoLockMinutes": 1, "updatedAt": "2026-10-02T00:00:00.000Z" }
+      }
+    },
+    {
+      "name": "unknown fields are preserved, base wins at the top level",
+      "base": {
+        "budget": { "monthly": 300000 },
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-01T01:00:00.000Z", "tags": ["x"] }
+        ]
+      },
+      "other": {
+        "budget": { "monthly": 1 },
+        "theme": "dark"
+      },
+      "expected": {
+        "budget": { "monthly": 300000 },
+        "theme": "dark",
+        "transactions": [
+          { "id": "t1", "type": "expense", "amount": 100, "categoryId": "c1", "accountId": "a1", "date": "2026-10-01", "note": "", "createdAt": "2026-10-01T01:00:00.000Z", "updatedAt": "2026-10-01T01:00:00.000Z", "tags": ["x"] }
+        ]
+      }
+    }
+  ]
+}

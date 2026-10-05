@@ -1,5 +1,4 @@
 import { addDays, addMonths, parseISODate } from './dates';
-import { newId } from './id';
 import type { ISODate, RecurringRule, Transaction, VaultData } from './model';
 
 const MAX_OCCURRENCES_PER_RUN = 2000;
@@ -49,6 +48,20 @@ export function nextOccurrence(rule: RecurringRule, today: ISODate): ISODate | u
   return undefined;
 }
 
+/** Same on every device, so two devices back-filling the same occurrence agree. */
+export function generatedTransactionId(ruleId: string, date: ISODate): string {
+  return `${ruleId}:${date}`;
+}
+
+/**
+ * Local midnight of the occurrence date. Generated transactions use this as `updatedAt`
+ * so a real edit or deletion always beats a later re-generation on another device.
+ */
+function occurrenceTimestamp(date: ISODate): string {
+  const { year, month, day } = parseISODate(date);
+  return new Date(year, month - 1, day).toISOString();
+}
+
 /**
  * Generates transactions for every active rule up to and including `today` (F-REC-2).
  * Idempotent: never creates two transactions for the same rule and date (F-REC-5).
@@ -75,7 +88,7 @@ export function applyRecurring(
       if (existing.has(key)) continue;
       existing.add(key);
       newTxs.push({
-        id: newId(),
+        id: generatedTransactionId(rule.id, date),
         type: rule.type,
         amount: rule.amount,
         categoryId: rule.categoryId,
@@ -83,7 +96,7 @@ export function applyRecurring(
         date,
         note: rule.note || rule.name,
         createdAt: ts,
-        updatedAt: ts,
+        updatedAt: occurrenceTimestamp(date),
         recurringId: rule.id,
       });
     }

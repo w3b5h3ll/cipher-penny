@@ -9,5 +9,18 @@ export function assertVaultData(value: unknown): VaultData {
     if (!Array.isArray(v[key])) throw new Error(`账本数据缺少字段：${key}`);
   }
   if (typeof v.settings !== 'object' || v.settings === null) throw new Error('账本数据缺少字段：settings');
+  if (
+    v.deletions !== undefined &&
+    !(
+      Array.isArray(v.deletions) &&
+      v.deletions.every(
+        (d: unknown) =>
+          typeof d === 'object' && d !== null && typeof (d as Record<string, unknown>).id === 'string' &&
+          typeof (d as Record<string, unknown>).deletedAt === 'string',
+      )
+    )
+  ) {
+    throw new Error('账本数据字段无效：deletions');
+  }
   return value as VaultData;
 }
