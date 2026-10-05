@@ -47,6 +47,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('月度趋势'), findsOneWidget);
 
+    await tester.tap(find.text('周期'));
+    await tester.pumpAndSettle();
+    expect(find.text('还没有周期账单'), findsOneWidget);
+    await tester.tap(find.text('+ 新建'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), 'iCloud');
+    await tester.enterText(find.byType(TextField).at(1), '21');
+    await tester.pump();
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    expect(find.text('iCloud'), findsOneWidget);
+    expect(session.data.transactions.where((t) => t.recurringId != null), hasLength(1));
+    await tester.tap(find.text('暂停'));
+    await tester.pump();
+    expect(session.data.recurring.single.active, isFalse);
+    expect(find.text('恢复'), findsOneWidget);
+
     await tester.tap(find.text('设置').last);
     await tester.pumpAndSettle();
     expect(find.text('开启同步'), findsOneWidget);

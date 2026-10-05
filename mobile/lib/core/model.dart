@@ -12,6 +12,8 @@ typedef ISODate = String;
 const expense = 'expense';
 const income = 'income';
 
+const frequencyLabel = {'weekly': '周', 'monthly': '月', 'yearly': '年'};
+
 abstract class VaultRecord {
   const VaultRecord(this.raw);
   final Json raw;

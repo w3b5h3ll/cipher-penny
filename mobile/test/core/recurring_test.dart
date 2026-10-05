@@ -1,5 +1,6 @@
 import 'package:cipher_penny/core/dates.dart';
 import 'package:cipher_penny/core/defaults.dart';
+import 'package:cipher_penny/core/ledger.dart';
 import 'package:cipher_penny/core/model.dart';
 import 'package:cipher_penny/core/recurring.dart';
 import 'package:cipher_penny/core/stats.dart';
@@ -84,8 +85,44 @@ void main() {
       expect(applyRecurring(reset, '2026-10-05').created, 0);
     });
 
-    test('skips inactive rules', () {
+    test('skips inactive rules and rules starting in the future', () {
       expect(applyRecurring(vaultWith(rule({'active': false, 'startDate': '2026-01-01'})), '2026-10-05').created, 0);
+      expect(applyRecurring(vaultWith(rule({'startDate': '2026-11-01'})), '2026-10-05').created, 0);
+    });
+
+    test('does not back-fill the paused period after resuming (F-REC-4)', () {
+      var data = applyRecurring(vaultWith(rule({'startDate': '2026-06-10'})), '2026-07-10').data;
+      data = setRecurringActive(data, 'r1', false, '2026-07-11');
+      expect(data.recurring.single.active, isFalse);
+      data = setRecurringActive(data, 'r1', true, '2026-10-05');
+      final result = applyRecurring(data, '2026-10-10');
+      expect(result.data.transactions.map((t) => t.date), ['2026-06-10', '2026-07-10', '2026-10-10']);
+    });
+  });
+
+  group('rule edits (F-REC-1, F-REC-4)', () {
+    test('upsert stamps updatedAt and replaces by id', () {
+      final now = DateTime.utc(2026, 10, 5, 8);
+      var data = upsertRecurring(createDefaultVault(), rule(), now);
+      expect(data.recurring.single.updatedAt, '2026-10-05T08:00:00.000Z');
+      data = upsertRecurring(data, RecurringRule({...rule().raw, 'name': 'iCloud 2TB'}), now);
+      expect(data.recurring.single.name, 'iCloud 2TB');
+    });
+
+    test('delete keeps generated transactions and leaves a tombstone', () {
+      final data = applyRecurring(vaultWith(rule({'startDate': '2026-08-05'})), '2026-10-05').data;
+      final deleted = deleteRecurring(data, 'r1');
+      expect(deleted.recurring, isEmpty);
+      expect(deleted.transactions, hasLength(3));
+      expect(deleted.deletions.map((d) => d.id), contains('r1'));
+    });
+  });
+
+  group('nextOccurrence', () {
+    test('returns today if due and not yet generated, otherwise the following one', () {
+      expect(nextOccurrence(rule({'startDate': '2026-01-05'}), '2026-10-05'), '2026-10-05');
+      expect(nextOccurrence(rule({'startDate': '2026-01-05', 'lastGenerated': '2026-10-05'}), '2026-10-05'), '2026-11-05');
+      expect(nextOccurrence(rule({'startDate': '2026-01-05', 'endDate': '2026-09-30'}), '2026-10-05'), isNull);
     });
   });
 

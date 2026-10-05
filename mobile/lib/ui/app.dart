@@ -5,6 +5,7 @@ import '../state/session.dart';
 import 'auth_screens.dart';
 import 'common.dart';
 import 'home_screen.dart';
+import 'recurring_screens.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
 import 'theme.dart';
@@ -96,7 +97,8 @@ class _MainShell extends StatefulWidget {
 
 class _MainShellState extends State<_MainShell> {
   int _tab = 0;
-  static const _tabs = ['账单', '统计', '设置'];
+  static const _tabs = ['账单', '统计', '周期', '设置'];
+  static const _settingsTab = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +138,7 @@ class _MainShellState extends State<_MainShell> {
                 ]),
               ),
               if (sync != null && sync.error != null) ...[
-                _SyncAlert(message: sync.error!, onTap: () => setState(() => _tab = 2)),
+                _SyncAlert(message: sync.error!, onTap: () => setState(() => _tab = _settingsTab)),
                 const SizedBox(width: 8),
               ],
             ]);
@@ -151,7 +153,7 @@ class _MainShellState extends State<_MainShell> {
         if (banners.isNotEmpty)
           Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 0), child: Gap(gap: 8, children: banners)),
         Expanded(
-          child: IndexedStack(index: _tab, children: const [HomeScreen(), StatsScreen(), SettingsScreen()]),
+          child: IndexedStack(index: _tab, children: const [HomeScreen(), StatsScreen(), RecurringScreen(), SettingsScreen()]),
         ),
       ]),
     );

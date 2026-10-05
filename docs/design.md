@@ -202,7 +202,7 @@ loading ──有信封──▶ locked ──正确密码──▶ unlocked ─
 | `lib/storage/vault_store.dart` | `src/storage/idb.ts` | 应用私有目录下的 `vault.json`（信封）和 `sync.json`（用 DEK 加密的同步配置），先写临时文件再改名，避免写到一半崩溃留下残缺文件。 |
 | `lib/remote/github.dart` | `src/remote/github.ts` | 同样的请求头、私有仓库检查、大文件回退和错误提示；HTTP 客户端可注入，便于测试。 |
 | `lib/state/` | `src/state/` | `sync.dart` 是同步一轮的移植；`session.dart` 是 `ChangeNotifier` 版的会话状态机，防抖保存、同步串行化、锁定前等待同步都与 Web 端相同。 |
-| `lib/ui/` | `src/ui/` | 与 Web 相同的顶栏（图标、文字标签页“账单 / 统计 / 设置”、同步失败提示、🔒 锁定），账单（快速记账 + 按天分组）、统计（按月 / 按年）、设置（自动锁定、同步、隐私与数据）三页，以及创建、解锁、从 GitHub 恢复。`theme.dart` 和 `common.dart` 对应 `styles.css`（D13）。 |
+| `lib/ui/` | `src/ui/` | 与 Web 相同的顶栏（图标、文字标签页“账单 / 统计 / 周期 / 设置”、同步失败提示、🔒 锁定），账单（快速记账 + 按天分组）、统计（按月 / 按年）、周期账单（列表、新建编辑、暂停恢复）、设置（自动锁定、同步、隐私与数据）四页，以及创建、解锁、从 GitHub 恢复。`theme.dart` 和 `common.dart` 对应 `styles.css`（D13）。 |
 
 - 自动锁定：根部 `Listener` 记录每次触摸；`AppLifecycleListener` 在切到后台时立即保存并推送待同步的修改，回到前台时先检查是否超时，没超时就拉取一次远端。锁定时关闭所有二级页面，屏幕上不留明文。
 - 语音输入用输入法自带的语音键，应用不申请麦克风权限。

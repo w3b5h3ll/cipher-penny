@@ -1,3 +1,4 @@
+import 'dates.dart';
 import 'defaults.dart';
 import 'model.dart';
 
@@ -54,16 +55,55 @@ VaultData updateTransaction(VaultData data, String id, Json patch, [DateTime? no
   ]);
 }
 
+List<Deletion> _withDeletion(VaultData data, String id, DateTime? now) => [
+      for (final d in data.deletions) if (d.id != id) d,
+      Deletion({'id': id, 'deletedAt': isoTimestamp(now ?? DateTime.now())}),
+    ];
+
 /// Removes the transaction and records a tombstone so sync drops it on other devices too.
 VaultData deleteTransaction(VaultData data, String id, [DateTime? now]) {
-  final deletedAt = isoTimestamp(now ?? DateTime.now());
   return data.copyWith(
     transactions: [for (final t in data.transactions) if (t.id != id) t],
-    deletions: [
-      for (final d in data.deletions) if (d.id != id) d,
-      Deletion({'id': id, 'deletedAt': deletedAt}),
-    ],
+    deletions: _withDeletion(data, id, now),
   );
+}
+
+VaultData upsertRecurring(VaultData data, RecurringRule rule, [DateTime? now]) {
+  final stamped = RecurringRule({...rule.raw, 'updatedAt': isoTimestamp(now ?? DateTime.now())});
+  final exists = data.recurring.any((r) => r.id == rule.id);
+  return data.copyWith(recurring: [
+    for (final r in data.recurring) r.id == rule.id ? stamped : r,
+    if (!exists) stamped,
+  ]);
+}
+
+/// Removes the rule only; transactions it generated are kept (F-REC-4).
+VaultData deleteRecurring(VaultData data, String id, [DateTime? now]) {
+  return data.copyWith(
+    recurring: [for (final r in data.recurring) if (r.id != id) r],
+    deletions: _withDeletion(data, id, now),
+  );
+}
+
+/// Pauses or resumes a rule. Resuming skips occurrences that fell inside the paused
+/// period, so a cancelled-then-restarted subscription is not back-filled (F-REC-4).
+VaultData setRecurringActive(VaultData data, String id, bool active, ISODate today, [DateTime? now]) {
+  final yesterday = addDays(today, -1);
+  final updatedAt = isoTimestamp(now ?? DateTime.now());
+  return data.copyWith(recurring: [
+    for (final r in data.recurring)
+      if (r.id != id)
+        r
+      else if (!active)
+        RecurringRule({...r.raw, 'active': false, 'updatedAt': updatedAt})
+      else
+        RecurringRule({
+          ...r.raw,
+          'active': true,
+          'lastGenerated': r.lastGenerated != null && r.lastGenerated!.compareTo(yesterday) > 0 ? r.lastGenerated : yesterday,
+          'updatedAt': updatedAt,
+        }),
+  ]);
 }
 
 VaultData updateSettings(VaultData data, Json patch, [DateTime? now]) {

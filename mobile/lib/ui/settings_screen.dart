@@ -30,7 +30,7 @@ class SettingsScreen extends StatelessWidget {
           Field(
             label: '闲置自动锁定',
             hint: 'App 在前台闲置或切到后台超过这个时间后自动锁定。',
-            child: IntSelect(
+            child: OptionSelect<int>(
               semanticLabel: '闲置自动锁定',
               value: settings.autoLockMinutes,
               options: const {1: '1 分钟', 5: '5 分钟', 15: '15 分钟', 30: '30 分钟', 60: '60 分钟', 0: '关闭'},
@@ -48,7 +48,7 @@ class SettingsScreen extends StatelessWidget {
               TextSpan(text: 'PBKDF2-SHA256', style: code),
               const TextSpan(text: ' 派生。主密码和明文不会上传到任何服务器；开启同步后，只有密文会上传到你自己的 GitHub 私有仓库。'),
             ])),
-            const Text('Android 版暂不支持修改主密码、管理账户和分类、周期账单规则和备份导入导出，请在网页版操作，改动会通过同步过来。'),
+            const Text('Android 版暂不支持修改主密码、管理账户和分类、备份导入导出，请在网页版操作，改动会通过同步过来。'),
             const Text('卸载 App 或清除应用数据会删除本机账本；开启了同步的话可以再从 GitHub 恢复。'),
           ]),
           Align(

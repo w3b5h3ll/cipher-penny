@@ -89,16 +89,6 @@ class _TxEditScreenState extends State<TxEditScreen> {
     navigator.pop();
   }
 
-  PreferredSizeWidget _bar(BuildContext context) => AppBar(
-        automaticallyImplyLeading: false,
-        titleSpacing: 8,
-        title: Row(children: [
-          IconBtn('‹', tooltip: '返回', bordered: false, onPressed: Navigator.of(context).pop),
-          const SizedBox(width: 4),
-          const AppLogo(),
-        ]),
-      );
-
   @override
   Widget build(BuildContext context) {
     final session = SessionScope.of(context);
@@ -108,7 +98,7 @@ class _TxEditScreenState extends State<TxEditScreen> {
     final title = existing != null ? '编辑账单' : '记一笔';
     if (widget.id != null && existing == null) {
       return Scaffold(
-        appBar: _bar(context),
+        appBar: subPageBar(context),
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: SectionCard(children: [
@@ -124,7 +114,7 @@ class _TxEditScreenState extends State<TxEditScreen> {
     final rule = ruleId == null ? null : data.recurring.where((r) => r.id == ruleId).firstOrNull;
 
     return Scaffold(
-      appBar: _bar(context),
+      appBar: subPageBar(context),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 64), children: [
         SectionCard(title: title, children: [
           Field(

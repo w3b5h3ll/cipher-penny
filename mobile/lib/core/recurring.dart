@@ -39,6 +39,19 @@ List<ISODate> occurrencesBetween(RecurringRule rule, ISODate? afterExclusive, IS
   return result;
 }
 
+/// The next date this rule will generate a transaction for, or null when it has ended.
+ISODate? nextOccurrence(RecurringRule rule, ISODate today) {
+  final last = rule.lastGenerated;
+  final floor = last != null && last.compareTo(today) >= 0 ? last : addDays(today, -1);
+  final end = rule.endDate;
+  for (var n = 0; n < 100000; n++) {
+    final date = nthOccurrence(rule, n);
+    if (end != null && date.compareTo(end) > 0) return null;
+    if (date.compareTo(floor) > 0) return date;
+  }
+  return null;
+}
+
 String generatedTransactionId(String ruleId, ISODate date) => '$ruleId:$date';
 
 /// Local midnight of the occurrence date, so a real edit or deletion always wins.

@@ -463,15 +463,15 @@ class AccountDropdown extends StatelessWidget {
   }
 }
 
-class IntSelect extends StatelessWidget {
-  const IntSelect({super.key, required this.value, required this.options, required this.onChanged, required this.semanticLabel});
-  final int value;
-  final Map<int, String> options;
-  final ValueChanged<int> onChanged;
+class OptionSelect<T> extends StatelessWidget {
+  const OptionSelect({super.key, required this.value, required this.options, required this.onChanged, required this.semanticLabel});
+  final T value;
+  final Map<T, String> options;
+  final ValueChanged<T> onChanged;
   final String semanticLabel;
 
   @override
-  Widget build(BuildContext context) => _Select<int>(
+  Widget build(BuildContext context) => _Select<T>(
         semanticLabel: semanticLabel,
         value: value,
         items: [for (final MapEntry(:key, :value) in options.entries) DropdownMenuItem(value: key, child: Text(value))],
@@ -480,30 +480,44 @@ class IntSelect extends StatelessWidget {
 }
 
 /// `<input type="date">`
+/// `onClear` makes the date optional: an empty field shows a placeholder and a set one gets ✕.
 class DateField extends StatelessWidget {
-  const DateField({super.key, required this.value, required this.onChanged});
-  final ISODate value;
+  const DateField({super.key, required this.value, required this.onChanged, this.semanticLabel = '日期', this.min, this.onClear});
+  final ISODate? value;
   final ValueChanged<ISODate> onChanged;
+  final String semanticLabel;
+  final ISODate? min;
+  final VoidCallback? onClear;
+
+  DateTime _toDateTime(ISODate iso) {
+    final (:year, :month, :day) = parseISODate(iso);
+    return DateTime(year, month, day);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final td = Td.of(context);
+    final value = this.value;
+    final min = this.min;
+    final first = min != null ? _toDateTime(min) : DateTime(2000);
+    var initial = value != null ? _toDateTime(value) : DateTime.now();
+    if (initial.isBefore(first)) initial = first;
     return Semantics(
-      label: '日期',
+      label: semanticLabel,
       button: true,
       child: InkWell(
         onTap: () async {
-          final (:year, :month, :day) = parseISODate(value);
-          final picked = await showDatePicker(
-            context: context,
-            initialDate: DateTime(year, month, day),
-            firstDate: DateTime(2000),
-            lastDate: DateTime(2100),
-          );
+          final picked = await showDatePicker(context: context, initialDate: initial, firstDate: first, lastDate: DateTime(2100));
           if (picked != null) onChanged(toISODate(picked.year, picked.month, picked.day));
         },
         child: InputDecorator(
-          decoration: const InputDecoration(),
-          child: Text(value, style: TdText.body.copyWith(fontFeatures: TdText.tabular)),
+          decoration: InputDecoration(
+            suffixIcon: value != null && onClear != null ? IconBtn('✕', tooltip: '清除$semanticLabel', bordered: false, onPressed: onClear) : null,
+            suffixIconConstraints: const BoxConstraints(minHeight: 32),
+          ),
+          child: value != null
+              ? Text(value, style: TdText.body.copyWith(fontFeatures: TdText.tabular))
+              : Text('未设置', style: TdText.body.copyWith(color: td.textPlaceholder)),
         ),
       ),
     );
@@ -581,4 +595,100 @@ class AppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Image.asset('assets/images/icon.png', width: size, height: size);
+}
+
+/// Top bar of pushed screens: ‹ back and the logo; the card below carries the heading.
+PreferredSizeWidget subPageBar(BuildContext context) => AppBar(
+      automaticallyImplyLeading: false,
+      titleSpacing: 8,
+      title: Row(children: [
+        IconBtn('‹', tooltip: '返回', bordered: false, onPressed: Navigator.of(context).pop),
+        const SizedBox(width: 4),
+        const AppLogo(),
+      ]),
+    );
+
+/// `.small-btn`
+class SmallButton extends StatelessWidget {
+  const SmallButton(this.label, {super.key, required this.onPressed});
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 24),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          tapTargetSize: MaterialTapTargetSize.padded,
+          textStyle: TdText.mark,
+        ),
+        child: Text(label),
+      );
+}
+
+/// `.tx-row`; `dimmed` is `.rule.paused`.
+class TxRow extends StatelessWidget {
+  const TxRow({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    required this.onTap,
+    this.badge,
+    this.dimmed = false,
+  });
+  final String icon;
+  final String title;
+  final String? badge;
+  final String subtitle;
+  final String amount;
+  final VoidCallback onTap;
+  final bool dimmed;
+
+  @override
+  Widget build(BuildContext context) {
+    final td = Td.of(context);
+    final opacity = dimmed ? 0.55 : 1.0;
+    return InkWell(
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 56),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: td.bgSecondaryContainer, borderRadius: BorderRadius.circular(Td.radiusMedium)),
+              child: Text(icon, style: const TextStyle(fontSize: 18)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Opacity(
+                opacity: opacity,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Flexible(
+                      child: Text(title, overflow: TextOverflow.ellipsis, style: TdText.body.copyWith(fontWeight: FontWeight.w500)),
+                    ),
+                    if (badge != null) ...[const SizedBox(width: 6), TdBadge(badge!)],
+                  ]),
+                  if (subtitle.isNotEmpty)
+                    Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TdText.mark.copyWith(color: td.textSecondary)),
+                ]),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Opacity(
+              opacity: opacity,
+              child: Text(amount, style: TdText.body.copyWith(fontWeight: FontWeight.w600, fontFeatures: TdText.tabular)),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 }
