@@ -1,6 +1,6 @@
 # CipherPenny 技术设计（Design）
 
-> 状态：v0.3 · 对应需求：[spec.md](./spec.md) v0.6
+> 状态：v0.4 · 对应需求：[spec.md](./spec.md) v0.7
 
 ## 1. 总体架构
 
@@ -26,7 +26,7 @@
 分层规则（由代码评审保证）：
 
 - `core/` 不依赖 DOM、React 和浏览器存储，可以在 Node 中直接测试。
-- 跨端（以后的 Flutter Android 应用）共享的是**格式规范和测试向量**，不是代码：[vault-format.md](./vault-format.md) 定义加密信封和数据结构，`fixtures/` 下的 JSON 向量由 TS 测试和以后的 Dart 测试共同使用。
+- 跨端（`mobile/` 下的 Flutter Android 应用，见第 8 节）共享的是**格式规范和测试向量**，不是代码：[vault-format.md](./vault-format.md) 定义加密信封和数据结构，`fixtures/` 下的 JSON 向量由 TS 测试和 Dart 测试共同使用。
 - `crypto/` 只依赖 `globalThis.crypto`（浏览器和 Node 都有）。
 - `storage/` 只读写密文（信封、用 DEK 加密的同步配置），不知道明文结构。
 - `remote/` 只负责和 GitHub API 收发文本，不依赖 `core/`，不知道明文结构。
@@ -36,7 +36,7 @@
 
 | 决策 | 选择 | 理由 / 放弃的方案 |
 | --- | --- | --- |
-| D1 形态 | Web（PWA），部署 GitHub Pages；Android 以后用 Flutter 单独实现 | 零成本，桌面优先。不做 iOS。两端通过加密数据格式互通，而不是共享代码，所以格式必须有独立规范和测试向量（D10）。 |
+| D1 形态 | Web（PWA），部署 GitHub Pages；Android 用 Flutter 单独实现（D13） | 零成本，桌面优先。不做 iOS。两端通过加密数据格式互通，而不是共享代码，所以格式必须有独立规范和测试向量（D10）。 |
 | D2 框架 | React 19 + TypeScript + Vite | 生态和 AI 工具支持最好；放弃 Svelte（更轻，但团队/AI 熟悉度略低）。 |
 | D3 运行时依赖 | 仅 `react`、`react-dom` | 降低供应链和 XSS 风险。路由（hash）、状态管理、IndexedDB 封装、图表都自己写，代码量很小。 |
 | D4 KDF | PBKDF2-SHA256，60 万次迭代 | WebCrypto 内置、零依赖。Argon2id 更抗 GPU 破解，但需要 WASM 依赖，且 GitHub Pages 无法开启 COOP/COEP 多线程。文件格式中记录 KDF 参数，以后可升级。 |
@@ -47,7 +47,8 @@
 | D9 视觉规范 | 原生 CSS，变量取值参考 **TDesign 设计令牌**；不引入任何组件库 | 比较过的方案：**Ant Design** 的 CSS-in-JS 会在运行时注入 `<style>`，必须放开 CSP 的 `style-src 'unsafe-inline'`，而且是大体积运行时依赖；**IBM Carbon** 偏英文企业风格，中文排版考虑少；Arco、Semi 和 TDesign 类似，但没有 Flutter 版。**TDesign** 以中文场景为先，同时有桌面和移动端规范，而且有官方的 **TDesign Flutter**，以后 Android 版可以直接用它的组件，两端视觉一致。只借用令牌而不装 `tdesign-react`，既保持了零第三方运行时依赖和严格 CSP，也不受组件库升级影响。品牌色沿用图标的琥珀色（取 TDesign 橙色色板），功能色（成功、错误）、中性灰、圆角、字号、阴影都用 TDesign 的取值。 |
 | D11 字体 | 用 Fontsource 自托管 Inter、思源黑体（Noto Sans SC）、JetBrains Mono 的可变字体 | CSP 只允许同源资源，国内也访问不了 Google Fonts，所以必须自托管。字体包只包含 woff2 和 CSS，不含 JS，放在 `devDependencies`，构建时打包进 `dist/`。思源黑体按 unicode-range 切成约 100 片（共 4.5 MB），浏览器只下载页面用到的切片。可变字体比静态 400 + 600 两个字重（7.4 MB）更小。`font-family` 中把本机的 `Source Han Sans SC` 和 `Noto Sans CJK SC` 排在网络字体前面，本机装了就不会下载。字体不放进 Service Worker 的预缓存，改为运行时 CacheFirst 缓存，避免首次安装就下载全部中文切片。 |
 | D12 同步 | 用户自己的 GitHub **私有**仓库（与代码仓库分开），通过 REST Contents API 读写同一个加密信封文件；按单条记录合并（规则见 vault-format.md 第 5 节） | 比较过的方案：**放进公开的代码仓库**：密文虽然安全，但任何人都能下载后离线暴力破解主密码，还能从提交历史看出记账时间和频率；而且令牌必须有代码仓库的写权限，令牌泄露等于网站代码可以被篡改（GitHub Pages 会直接部署），所以排除。**WebDAV（坚果云）**：国内访问好，但浏览器跨域受限，需要代理。**整份文件“后写入者胜”**：实现最简单，但两台设备离线各记一笔就会丢一笔。**按记录合并**：每条记录带 `updatedAt`，删除留删除记录，周期账单用确定性 ID，两端独立合并得到同样的结果；代价是格式多了几条约定，Flutter 端也要实现同样的规则，所以合并用例写成了 `fixtures/merge-cases.json`。GitHub API 支持 CORS，纯前端即可调用，不需要后端；写入时带上 blob `sha`，并发写入会被拒绝，读取、合并后重试。 |
-| D10 跨端互通 | 格式规范 + JSON 测试向量 | 加密格式只用 PBKDF2、AES-GCM、标准 Base64 这类各语言都有标准实现的原语（Dart 可用 `cryptography` 包）。解析器的期望行为也以 JSON 用例描述，Dart 版本跑同一份用例即可对齐。 |
+| D10 跨端互通 | 格式规范 + JSON 测试向量 | 加密格式只用 PBKDF2、AES-GCM、标准 Base64 这类各语言都有标准实现的原语（Dart 用 `cryptography` 包）。解析器的期望行为也以 JSON 用例描述，Dart 版本跑同一份用例即可对齐。 |
+| D13 Android 端 | Flutter 应用放在同一仓库的 `mobile/` 目录；Material 3 + 品牌色；依赖只有 `cryptography`、`cryptography_flutter`、`http`、`path_provider` 和 SDK 自带的 `flutter_localizations` | **放在同一仓库**而不是独立仓库：Dart 测试直接读取 `../fixtures/`，格式规范、测试向量和两端实现在同一个提交里一起改，不会出现两边版本对不上。**界面没有用 TDesign Flutter**（D9 曾这样设想）：它是体积较大的第三方组件库，而这个应用要处理密钥和明文，第三方包越少越好；Material 3 是 SDK 自带的，用品牌橙色生成配色、浅灰背景和白色卡片，视觉上和 Web 端足够接近。**加密**用 `cryptography` 包的 PBKDF2 和 AES-GCM，`cryptography_flutter` 在 Android 上换成系统原生实现（60 万次 PBKDF2 在模拟器上约 2 秒，纯 Dart 实现会慢很多）；测试在主机上跑纯 Dart 实现，与 Web 生成的测试向量互通。`http` 和 `path_provider` 是 Dart/Flutter 官方维护的包。 |
 
 ## 3. 数据模型（明文，仅存在于内存）
 
@@ -116,7 +117,8 @@ JSON.stringify(VaultData) ──▶ 密文 payload
 | 另一台设备推送了无法解密的文件 | ✅ | 远端无法用本机 DEK 解密时停止同步，不会自动覆盖任何一边（F-SYNC-7）。 |
 | GitHub Pages 或同步端读取数据 | ✅ | 它们只有代码或密文。 |
 | 密文被篡改 | ✅ | GCM 认证失败，拒绝加载。 |
-| 解锁状态下有人拿到手机 | ⚠️ 部分 | 自动锁定缩短暴露窗口。 |
+| 解锁状态下有人拿到手机 | ⚠️ 部分 | 自动锁定缩短暴露窗口。Android 端切到后台超过设定时间后，回到前台时立即锁定。 |
+| Android 系统备份把数据传到第三方 | ✅ | 关闭了 `allowBackup`，并用 `data_extraction_rules.xml` 排除云备份和换机迁移；即使被备份也只有密文。 |
 | 页面被注入恶意脚本（XSS、恶意依赖、托管被篡改） | ⚠️ 部分 | 注入的代码可以直接读取内存明文，这是所有网页端加密应用的固有局限。缓解：严格 CSP、只有两个运行时依赖、禁止 innerHTML、锁文件 + CI 构建。 |
 | 主密码被暴力破解 | ⚠️ 部分 | PBKDF2 60 万次；要求至少 8 位，建议使用长口令。 |
 | 忘记主密码 | ❌ | 设计上无法恢复；创建时强提示，建议定期导出备份。 |
@@ -188,3 +190,21 @@ loading ──有信封──▶ locked ──正确密码──▶ unlocked ─
 - 用 `vite-plugin-pwa` 生成 Service Worker 和 manifest（`registerType: autoUpdate`）。vite-plugin-pwa 2 不再自动开启 `skipWaiting` / `clientsClaim`，配置里必须显式打开，否则新版本会一直停在 waiting 状态，用户永远拿不到更新。新版本在下次打开应用时生效。
 - 自定义 Vite 插件只在生产构建时向 `index.html` 注入 CSP `<meta>`（开发模式下 Vite 的热更新需要内联脚本）。
 - GitHub Actions 依次执行：安装依赖（锁文件）→ 类型检查 → lint → 测试 → 构建 → 推送到 `master` 时部署 Pages。
+
+## 8. Android 端（Flutter，`mobile/`）
+
+范围见 spec 第 8 节。目录与 Web 端一一对应，分层规则相同（界面只通过 `state/` 访问数据）：
+
+| 目录 | 对应 Web 端 | 说明 |
+| --- | --- | --- |
+| `lib/core/` | `src/core/` | 逐行移植的纯函数：金额、日期、账本、周期、统计、解析器、合并、校验。数据模型包着原始 JSON（`Map`），未知字段在读改写时原样保留（vault-format 第 3 节）；排序用稳定排序，与 JS 一致。 |
+| `lib/crypto/vault_crypto.dart` | `src/crypto/vault-crypto.ts` | 相同的信封、AAD 和“密文‖16 字节 tag”布局。 |
+| `lib/storage/vault_store.dart` | `src/storage/idb.ts` | 应用私有目录下的 `vault.json`（信封）和 `sync.json`（用 DEK 加密的同步配置），先写临时文件再改名，避免写到一半崩溃留下残缺文件。 |
+| `lib/remote/github.dart` | `src/remote/github.ts` | 同样的请求头、私有仓库检查、大文件回退和错误提示；HTTP 客户端可注入，便于测试。 |
+| `lib/state/` | `src/state/` | `sync.dart` 是同步一轮的移植；`session.dart` 是 `ChangeNotifier` 版的会话状态机，防抖保存、同步串行化、锁定前等待同步都与 Web 端相同。 |
+| `lib/ui/` | `src/ui/` | 账单（快速记账 + 按天分组）、统计（按月 / 按年）、设置（同步、自动锁定、清空）三个标签页，以及创建、解锁、从 GitHub 恢复。 |
+
+- 自动锁定：根部 `Listener` 记录每次触摸；`AppLifecycleListener` 在切到后台时立即保存并推送待同步的修改，回到前台时先检查是否超时，没超时就拉取一次远端。锁定时关闭所有二级页面，屏幕上不留明文。
+- 语音输入用输入法自带的语音键，应用不申请麦克风权限。
+- 时间戳统一用与 JS `toISOString()` 相同的毫秒精度格式，因为合并时按字符串比较。
+- 测试：`test/core` 跑 `fixtures/` 下的解析和合并用例；`test/crypto` 解密 Web 生成的 `vault-v1.json`；`test/state` 用假的远端跑与 `sync.test.ts` 相同的同步场景；`test/ui` 是一遍界面冒烟测试。

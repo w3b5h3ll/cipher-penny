@@ -4,6 +4,8 @@
 
 在线使用：<https://w3b5h3ll.github.io/cipher-penny/>
 
+Android 版（Flutter）在 [`mobile/`](mobile/) 目录，与 Web 端通过同一个 GitHub 私有仓库同步。
+
 ## 功能
 
 - **一句话记账**：输入或语音说出“昨天打车28，晚上和朋友吃饭260”，自动拆成多笔，识别金额、日期、分类和账户，确认后保存。
@@ -33,7 +35,7 @@
 | --- | --- |
 | [docs/spec.md](docs/spec.md) | 需求规格：目标、非目标、带编号的需求与验收标准 |
 | [docs/design.md](docs/design.md) | 技术设计：架构、决策记录、加密设计、威胁模型 |
-| [docs/vault-format.md](docs/vault-format.md) | 加密文件格式规范（以后的 Flutter Android 版依赖它） |
+| [docs/vault-format.md](docs/vault-format.md) | 加密文件格式规范（Web 端和 Android 端共用） |
 | [docs/plan.md](docs/plan.md) | 里程碑与任务进度 |
 | [AGENTS.md](AGENTS.md) | 给 AI 编码代理和贡献者的约定与安全红线 |
 
@@ -48,6 +50,8 @@ pnpm install
 pnpm dev        # http://localhost:5173/cipher-penny/
 pnpm check      # 类型检查 + lint + 测试 + 构建
 ```
+
+Android 版的构建方法见 [mobile/README.md](mobile/README.md)。
 
 ## 部署
 

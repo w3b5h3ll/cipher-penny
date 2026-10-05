@@ -64,11 +64,22 @@
 - [x] 部署到 GitHub Pages：<https://w3b5h3ll.github.io/cipher-penny/>（CI 的 check 和 deploy 均通过；线上确认 CSP、manifest、Service Worker 生效）
 - [ ] 在 Android Chrome 上验证并安装为 PWA
 
-## 之后（待 spec 第 8 节的问题确认后细化）
+## M2 Android 应用（spec 第 8 节，`mobile/`）
+
+- [x] 工具链：Flutter 3.47、Android SDK 36、JDK 21；`flutter create` 生成 `mobile/`（D13）
+- [x] 核心逻辑移植：金额、日期、账本、周期、统计、解析器、合并、校验（`test/core`：解析用例 29 个、合并用例全部通过，含交换律和幂等性）
+- [x] 加密层（`test/crypto`：能解密 Web 生成的 `vault-v1.json`；另外手工验证了 Web 端能解密 Dart 生成的信封）
+- [x] 存储、GitHub 客户端、同步一轮、会话状态机（`test/remote`、`test/state`：与 `sync.test.ts` 相同的 11 个场景）
+- [x] 界面：创建、解锁、从 GitHub 恢复、快速记账、账单列表、编辑删除、统计、设置（`test/ui` 冒烟测试；Android 36 模拟器上跑 release 包：创建账本、记账、锁定再解锁数据仍在、统计正确、用无效令牌连 GitHub 显示“令牌无效”）
+- [x] Android 配置：应用名、图标、网络权限、关闭系统备份
+- [x] CI：`flutter analyze` 和 `flutter test`
+- [ ] 在 Paul 的手机上安装，用真实私有仓库与 Web 端双向同步（需要 Paul 操作）
+
+## 之后（待 spec 第 9 节的问题确认后细化）
 
 - [ ] 恢复码
 - [ ] 可选的大模型解析（用户自备 API key，key 同样加密保存）
 - [ ] 账户间转账、信用卡还款
 - [ ] 预算与超支提醒
 - [ ] 导入支付宝、微信账单 CSV 进行对账
-- [ ] Flutter Android 应用（独立仓库）：按 vault-format.md 实现格式读写，跑通 `fixtures/` 下的全部测试向量（包括合并用例），通过同一个 GitHub 私有仓库与 Web 端同步
+- [ ] Android 端补齐：改密码、账户和分类管理、周期账单规则、备份导入导出（spec A-2）

@@ -25,6 +25,7 @@ describe('input parsing', () => {
   it('parses repo names and URLs', () => {
     expect(parseRepo('paul/data')).toEqual({ owner: 'paul', repo: 'data' });
     expect(parseRepo(' https://github.com/paul/data.git ')).toEqual({ owner: 'paul', repo: 'data' });
+    expect(parseRepo('https://github.com/paul/data.git/')).toEqual({ owner: 'paul', repo: 'data' });
     expect(parseRepo('paul')).toBeNull();
     expect(parseRepo('paul/data/extra')).toBeNull();
     expect(parseRepo('pa ul/data')).toBeNull();

@@ -45,8 +45,8 @@ export function parseRepo(input: string): { owner: string; repo: string } | null
   const trimmed = input
     .trim()
     .replace(/^https?:\/\/github\.com\//i, '')
-    .replace(/\.git$/i, '')
-    .replace(/\/+$/, '');
+    .replace(/\/+$/, '')
+    .replace(/\.git$/i, '');
   const [owner, repo, ...rest] = trimmed.split('/');
   if (!owner || !repo || rest.length > 0 || !NAME.test(owner) || !NAME.test(repo)) return null;
   return { owner, repo };
