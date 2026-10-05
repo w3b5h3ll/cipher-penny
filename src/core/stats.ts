@@ -11,6 +11,38 @@ export function transactionsInMonth(txs: Transaction[], month: MonthKey): Transa
   return txs.filter((t) => monthKeyOf(t.date) === month);
 }
 
+export function transactionsInYear(txs: Transaction[], year: number): Transaction[] {
+  const prefix = `${year}-`;
+  return txs.filter((t) => t.date.startsWith(prefix));
+}
+
+export interface MonthSummary extends Summary {
+  month: MonthKey;
+}
+
+/** F-STAT-4: one entry per calendar month of `year`, January first, empty months included. */
+export function monthlySummaries(txs: Transaction[], year: number): MonthSummary[] {
+  const byMonth = new Map<MonthKey, Transaction[]>();
+  for (const t of transactionsInYear(txs, year)) {
+    const key = monthKeyOf(t.date);
+    const list = byMonth.get(key) ?? [];
+    list.push(t);
+    byMonth.set(key, list);
+  }
+  return Array.from({ length: 12 }, (_, i) => {
+    const month = `${year}-${String(i + 1).padStart(2, '0')}`;
+    return { month, ...summarize(byMonth.get(month) ?? []) };
+  });
+}
+
+/** Months of `year` that have started by `today`: 12 for past years, 0 for future ones. */
+export function monthsElapsed(year: number, today: ISODate): number {
+  const currentYear = Number(today.slice(0, 4));
+  if (year < currentYear) return 12;
+  if (year > currentYear) return 0;
+  return Number(today.slice(5, 7));
+}
+
 export function summarize(txs: Transaction[]): Summary {
   let income = 0;
   let expense = 0;

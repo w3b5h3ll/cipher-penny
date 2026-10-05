@@ -3,7 +3,16 @@ import { toCSV } from './csv';
 import { createDefaultVault } from './defaults';
 import { addTransactions, deleteTransaction, updateTransaction, upsertAccount } from './ledger';
 import type { TransactionInput, VaultData } from './model';
-import { accountBalances, groupByDate, summarize, totalsByCategory, transactionsInMonth } from './stats';
+import {
+  accountBalances,
+  groupByDate,
+  monthlySummaries,
+  monthsElapsed,
+  summarize,
+  totalsByCategory,
+  transactionsInMonth,
+  transactionsInYear,
+} from './stats';
 
 function setup(): { data: VaultData; food: string; transport: string; salary: string; cash: string; wechat: string } {
   const base = createDefaultVault();
@@ -67,6 +76,57 @@ describe('stats (F-STAT)', () => {
     const groups = groupByDate(transactionsInMonth(data.transactions, '2026-10'));
     expect(groups.map((g) => g.date)).toEqual(['2026-10-05', '2026-10-02', '2026-10-01']);
     expect(groups[1]!.summary.expense).toBe(4300);
+  });
+});
+
+describe('yearly stats (F-STAT-4)', () => {
+  function withOtherYears(): VaultData {
+    const { data, food, cash } = setup();
+    const tx = (date: string, amount: number): TransactionInput => ({
+      type: 'expense',
+      amount,
+      categoryId: food,
+      accountId: cash,
+      date,
+      note: '',
+    });
+    return addTransactions(
+      data,
+      [tx('2025-12-31', 111), tx('2027-01-01', 222), tx('2026-01-15', 4000)],
+      new Date('2026-10-05T00:00:00Z'),
+    );
+  }
+
+  it('selects only the given year', () => {
+    const data = withOtherYears();
+    expect(transactionsInYear(data.transactions, 2026)).toHaveLength(6);
+    expect(transactionsInYear(data.transactions, 2025).map((t) => t.amount)).toEqual([111]);
+  });
+
+  it('breaks a year into 12 months whose sum equals the yearly summary', () => {
+    const data = withOtherYears();
+    const months = monthlySummaries(data.transactions, 2026);
+    expect(months.map((m) => m.month)).toEqual(
+      Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, '0')}`),
+    );
+    expect(months[0]).toEqual({ month: '2026-01', income: 0, expense: 4000, net: -4000 });
+    expect(months[1]).toEqual({ month: '2026-02', income: 0, expense: 0, net: 0 });
+    expect(months[8]!.expense).toBe(9900);
+    expect(months[9]).toEqual({ month: '2026-10', income: 800000, expense: 7800, net: 792200 });
+
+    const year = summarize(transactionsInYear(data.transactions, 2026));
+    const sum = months.reduce(
+      (acc, m) => ({ income: acc.income + m.income, expense: acc.expense + m.expense, net: acc.net + m.net }),
+      { income: 0, expense: 0, net: 0 },
+    );
+    expect(sum).toEqual(year);
+  });
+
+  it('counts elapsed months for averages', () => {
+    expect(monthsElapsed(2025, '2026-10-05')).toBe(12);
+    expect(monthsElapsed(2026, '2026-10-05')).toBe(10);
+    expect(monthsElapsed(2026, '2026-01-01')).toBe(1);
+    expect(monthsElapsed(2027, '2026-10-05')).toBe(0);
   });
 });
 

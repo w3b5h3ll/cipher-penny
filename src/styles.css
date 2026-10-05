@@ -871,3 +871,114 @@ input.narrow {
 .bar-fill.income {
   background: var(--income);
 }
+
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--td-radius-default);
+  background: var(--expense);
+}
+
+.dot.income {
+  margin-left: 8px;
+  background: var(--income);
+}
+
+.trend {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 4px;
+  height: 160px;
+}
+
+.trend-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  border-radius: var(--td-radius-default);
+  background: none;
+}
+
+.trend-col:hover:not(:disabled) {
+  background: var(--td-bg-color-container-hover);
+}
+
+.trend-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  min-height: 0;
+}
+
+.trend-bar {
+  width: min(10px, 40%);
+  border-radius: 2px 2px 0 0;
+  background: var(--expense);
+}
+
+.trend-bar.income {
+  background: var(--income);
+}
+
+.trend-label {
+  text-align: center;
+  font-size: var(--td-font-size-mark-small);
+  line-height: 20px;
+  color: var(--td-text-color-secondary);
+}
+
+.trend-col.current .trend-label {
+  color: var(--td-brand-color);
+  font-weight: 600;
+}
+
+.month-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.month-table th,
+.month-table td {
+  padding: 6px 4px;
+  text-align: right;
+  border-bottom: 1px solid var(--td-component-stroke);
+}
+
+.month-table th {
+  font-weight: 400;
+  color: var(--td-text-color-secondary);
+}
+
+.month-table th:first-child,
+.month-table td:first-child {
+  text-align: left;
+}
+
+.month-table tr:last-child td {
+  border-bottom: none;
+}
+
+.month-table .link {
+  padding: 0;
+}
+
+@media (max-width: 560px) {
+  .month-table {
+    font-size: var(--td-font-size-mark-small);
+  }
+}

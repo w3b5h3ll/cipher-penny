@@ -89,3 +89,17 @@ export function MonthSwitcher({ month, onChange }: { month: MonthKey; onChange: 
     </div>
   );
 }
+
+export function YearSwitcher({ year, onChange }: { year: number; onChange: (y: number) => void }) {
+  return (
+    <div className="month-switcher">
+      <button type="button" className="icon-btn" aria-label="上一年" onClick={() => onChange(year - 1)}>
+        ‹
+      </button>
+      <span className="month-label">{year}年</span>
+      <button type="button" className="icon-btn" aria-label="下一年" onClick={() => onChange(year + 1)}>
+        ›
+      </button>
+    </div>
+  );
+}
