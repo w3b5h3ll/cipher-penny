@@ -206,5 +206,6 @@ loading ──有信封──▶ locked ──正确密码──▶ unlocked ─
 
 - 自动锁定：根部 `Listener` 记录每次触摸；`AppLifecycleListener` 在切到后台时立即保存并推送待同步的修改，回到前台时先检查是否超时，没超时就拉取一次远端。锁定时关闭所有二级页面，屏幕上不留明文。
 - 语音输入用输入法自带的语音键，应用不申请麦克风权限。
+- 启动器图标是自适应图标（`mipmap-anydpi-v26/ic_launcher.xml`）：背景是 `icon.svg` 的深蓝色，前景是同一枚金币，按“SVG 的 512 画布对应 72dp 可见区域”的比例放在 108dp 图层里，圆角由启动器的遮罩形状决定；另有 Android 13 主题图标用的单色层。只给传统 PNG 的话，一加、Pixel 等启动器会把图标缩小后放进白色圆底里。
 - 时间戳统一用与 JS `toISOString()` 相同的毫秒精度格式，因为合并时按字符串比较。
 - 测试：`test/core` 跑 `fixtures/` 下的解析和合并用例；`test/crypto` 解密 Web 生成的 `vault-v1.json`；`test/state` 用假的远端跑与 `sync.test.ts` 相同的同步场景；`test/ui` 是一遍界面冒烟测试。
