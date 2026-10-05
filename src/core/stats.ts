@@ -65,7 +65,7 @@ export interface DayGroup {
   summary: Summary;
 }
 
-/** Groups by date, newest day first; within a day, newest entry first. */
+/** Groups by date, newest day first; within a day, newest entry first (ties keep insertion order). */
 export function groupByDate(txs: Transaction[]): DayGroup[] {
   const map = new Map<ISODate, Transaction[]>();
   for (const t of txs) {
@@ -77,7 +77,7 @@ export function groupByDate(txs: Transaction[]): DayGroup[] {
     .sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))
     .map(([date, items]) => ({
       date,
-      items: items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+      items: items.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
       summary: summarize(items),
     }));
 }

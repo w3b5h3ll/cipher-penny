@@ -35,6 +35,12 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: ['*/crypto/*', '*/storage/*'] }],
+    },
+  },
+  {
     files: ['src/core/**/*.ts', 'src/crypto/**/*.ts'],
     rules: {
       'no-restricted-imports': [

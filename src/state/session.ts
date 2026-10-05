@@ -13,6 +13,15 @@ import {
 } from '../crypto/vault-crypto';
 import { clearAll, loadEnvelope, requestPersistentStorage, saveEnvelope } from '../storage/idb';
 
+// The UI's only window into crypto/: error types and backup-file validation.
+export {
+  CorruptedVaultError,
+  parseEnvelope,
+  UnsupportedFormatError,
+  WrongPasswordError,
+  type Envelope,
+} from '../crypto/vault-crypto';
+
 export type SessionState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
