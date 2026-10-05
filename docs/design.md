@@ -123,7 +123,7 @@ JSON.stringify(VaultData) ──▶ 密文 payload
 | `core/defaults.ts` | 默认账户、分类与关键词，创建空账本。 |
 | `core/ledger.ts` | 不可变的增删改操作。 |
 | `core/recurring.ts` | 计算规则的发生日期并补齐账单（F-REC）。 |
-| `core/stats.ts` | 月度汇总、分类汇总、账户余额（F-STAT）。 |
+| `core/stats.ts` | 支出统计（F-STAT）：按月、按年、按分类、按账户汇总，日均和月均的天数、月数。所有函数只计入 `type === 'expense'` 的记录；收入记录保留在数据中，但不参与统计也不显示。 |
 | `core/csv.ts` | CSV 导出（F-IO-3）。 |
 | `core/parser/` | 自然语言解析（F-QA），细分为中文数字、金额、日期、分类匹配。 |
 | `crypto/vault-crypto.ts` | 创建、打开、重新保存、修改密码、信封校验（F-VAULT）。 |

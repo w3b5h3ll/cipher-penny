@@ -2,10 +2,10 @@ import { useState, type FormEvent } from 'react';
 import { todayISO } from '../../core/dates';
 import { fallbackCategory } from '../../core/defaults';
 import { addTransactions, deleteTransaction, updateTransaction } from '../../core/ledger';
-import type { TransactionInput, TxType } from '../../core/model';
+import type { TransactionInput } from '../../core/model';
 import { centsToInput, parseAmount } from '../../core/money';
 import { session } from '../../state/session';
-import { AccountSelect, CategorySelect, Field, TypeToggle } from '../components/controls';
+import { AccountSelect, CategorySelect, Field } from '../components/controls';
 import { useLookups, useVault } from '../hooks';
 import { navigate } from '../router';
 
@@ -20,7 +20,7 @@ export function TxEditScreen({ id }: { id?: string }) {
   const lookups = useLookups(data);
   const existing = id ? data.transactions.find((t) => t.id === id) : undefined;
 
-  const [type, setType] = useState<TxType>(existing?.type ?? 'expense');
+  const type = existing?.type ?? 'expense';
   const [amountText, setAmountText] = useState(existing ? centsToInput(existing.amount) : '');
   const [categoryId, setCategoryId] = useState(
     existing?.categoryId ?? fallbackCategory(data.categories, 'expense')?.id ?? '',
@@ -41,11 +41,6 @@ export function TxEditScreen({ id }: { id?: string }) {
   const amount = parseAmount(amountText);
   const valid = amount !== null && amount > 0 && categoryId && accountId && date;
   const rule = existing?.recurringId ? data.recurring.find((r) => r.id === existing.recurringId) : undefined;
-
-  function changeType(t: TxType) {
-    setType(t);
-    if (lookups.category(categoryId)?.type !== t) setCategoryId(fallbackCategory(data.categories, t)?.id ?? '');
-  }
 
   function save(e: FormEvent) {
     e.preventDefault();
@@ -68,7 +63,6 @@ export function TxEditScreen({ id }: { id?: string }) {
   return (
     <form className="card stack" onSubmit={save}>
       <h2>{existing ? '编辑账单' : '记一笔'}</h2>
-      <TypeToggle value={type} onChange={changeType} />
       <Field label="金额（元）">
         <input
           className="amount-input large"

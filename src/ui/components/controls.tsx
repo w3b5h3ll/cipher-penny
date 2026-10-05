@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { addMonthsToKey, formatMonthKey, type MonthKey } from '../../core/dates';
 import type { Account, Category, TxType } from '../../core/model';
-import { TX_TYPE_LABEL } from '../../core/model';
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: ReactNode }) {
   return (
@@ -10,25 +9,6 @@ export function Field({ label, children, hint }: { label: string; children: Reac
       {children}
       {hint ? <span className="field-hint">{hint}</span> : null}
     </label>
-  );
-}
-
-export function TypeToggle({ value, onChange }: { value: TxType; onChange: (t: TxType) => void }) {
-  return (
-    <div className="segmented" role="radiogroup" aria-label="类型">
-      {(['expense', 'income'] as const).map((t) => (
-        <button
-          key={t}
-          type="button"
-          role="radio"
-          aria-checked={value === t}
-          className={value === t ? `active ${t}` : ''}
-          onClick={() => onChange(t)}
-        >
-          {TX_TYPE_LABEL[t]}
-        </button>
-      ))}
-    </div>
   );
 }
 

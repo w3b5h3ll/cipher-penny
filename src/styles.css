@@ -52,7 +52,6 @@
 
   /* App aliases */
   --expense: var(--td-error-color);
-  --income: var(--td-success-color);
 
   color-scheme: light dark;
   font: var(--td-font-body-medium);
@@ -291,10 +290,6 @@ button.block {
 
 .expense {
   color: var(--expense);
-}
-
-.income {
-  color: var(--income);
 }
 
 .empty {
@@ -621,12 +616,8 @@ button.block {
   padding: 12px;
   border-radius: var(--td-radius-medium);
   border: 1px solid var(--td-component-stroke);
-  border-left: 3px solid var(--expense);
+  border-left: 3px solid var(--td-brand-color);
   background: var(--td-bg-color-secondarycontainer);
-}
-
-.draft-income {
-  border-left-color: var(--income);
 }
 
 .draft-row {
@@ -688,14 +679,6 @@ button.block {
   background: var(--td-bg-color-container);
   color: var(--td-text-color-primary);
   font-weight: 600;
-}
-
-.segmented button.active.expense {
-  color: var(--expense);
-}
-
-.segmented button.active.income {
-  color: var(--income);
 }
 
 /* Transaction list */
@@ -768,10 +751,6 @@ button.block {
 .tx-amount {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-}
-
-.tx-amount.expense {
-  color: var(--td-text-color-primary);
 }
 
 .plain-list > li {
@@ -868,29 +847,6 @@ input.narrow {
   background: var(--expense);
 }
 
-.bar-fill.income {
-  background: var(--income);
-}
-
-.legend {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--td-radius-default);
-  background: var(--expense);
-}
-
-.dot.income {
-  margin-left: 8px;
-  background: var(--income);
-}
-
 .trend {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -925,13 +881,9 @@ input.narrow {
 }
 
 .trend-bar {
-  width: min(10px, 40%);
+  width: min(16px, 60%);
   border-radius: 2px 2px 0 0;
   background: var(--expense);
-}
-
-.trend-bar.income {
-  background: var(--income);
 }
 
 .trend-label {

@@ -1,18 +1,16 @@
 import { useCallback, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { todayISO } from '../../core/dates';
-import { fallbackCategory } from '../../core/defaults';
 import { addTransactions } from '../../core/ledger';
-import type { TransactionInput, TxType, VaultData } from '../../core/model';
+import type { TransactionInput, VaultData } from '../../core/model';
 import { centsToInput, formatMoney, parseAmount } from '../../core/money';
 import { parseEntries } from '../../core/parser/parse';
 import { session } from '../../state/session';
-import { AccountSelect, CategorySelect, TypeToggle } from '../components/controls';
+import { AccountSelect, CategorySelect } from '../components/controls';
 import { useLookups, useVault } from '../hooks';
 import { useSpeech } from '../voice';
 
 interface DraftForm {
   key: number;
-  type: TxType;
   amountText: string;
   categoryId: string;
   accountId: string;
@@ -20,20 +18,37 @@ interface DraftForm {
   note: string;
 }
 
+interface ParseResult {
+  drafts: DraftForm[];
+  /** Entries the parser classified as income; the app only records spending (F-QA-7). */
+  skipped: string[];
+}
+
 let draftKey = 0;
 
-const NO_AMOUNT_MESSAGE = '没有识别到金额，试试“午饭 35”这样的说法';
+function buildDrafts(input: string, data: VaultData, defaultAccountId: string): ParseResult {
+  const result: ParseResult = { drafts: [], skipped: [] };
+  for (const d of parseEntries(input, { today: todayISO(), categories: data.categories, accounts: data.accounts })) {
+    if (d.type === 'income') {
+      result.skipped.push(`${d.note || '收入'} ${formatMoney(d.amount)}`);
+      continue;
+    }
+    result.drafts.push({
+      key: ++draftKey,
+      amountText: centsToInput(d.amount),
+      categoryId: d.categoryId,
+      accountId: d.accountId ?? defaultAccountId,
+      date: d.date,
+      note: d.note,
+    });
+  }
+  return result;
+}
 
-function buildDrafts(input: string, data: VaultData, defaultAccountId: string): DraftForm[] {
-  return parseEntries(input, { today: todayISO(), categories: data.categories, accounts: data.accounts }).map((d) => ({
-    key: ++draftKey,
-    type: d.type,
-    amountText: centsToInput(d.amount),
-    categoryId: d.categoryId,
-    accountId: d.accountId ?? defaultAccountId,
-    date: d.date,
-    note: d.note,
-  }));
+function parseMessage({ drafts, skipped }: ParseResult): string | null {
+  if (skipped.length > 0) return `已跳过收入：${skipped.join('、')}。目前只记录支出。`;
+  if (drafts.length === 0) return '没有识别到金额，试试“午饭 35”这样的说法';
+  return null;
 }
 
 /** F-QA-1, F-QA-7, F-QA-8, F-QA-9 */
@@ -43,17 +58,14 @@ export function QuickAdd({ initialText, onSaved }: { initialText?: string; onSav
   const defaultAccountId = lookups.activeAccounts[0]?.id ?? '';
   const [text, setText] = useState(initialText ?? '');
   // F-QA-9: `#/add?text=...` shows drafts immediately; the route remounts us when the text changes.
-  const [drafts, setDrafts] = useState<DraftForm[]>(() =>
-    initialText ? buildDrafts(initialText, data, defaultAccountId) : [],
-  );
-  const [message, setMessage] = useState<string | null>(() =>
-    initialText && drafts.length === 0 ? NO_AMOUNT_MESSAGE : null,
-  );
+  const [initial] = useState(() => (initialText ? buildDrafts(initialText, data, defaultAccountId) : undefined));
+  const [drafts, setDrafts] = useState<DraftForm[]>(initial?.drafts ?? []);
+  const [message, setMessage] = useState<string | null>(initial ? parseMessage(initial) : null);
 
   function parse(input: string) {
-    const next = buildDrafts(input, data, defaultAccountId);
-    setMessage(next.length === 0 ? NO_AMOUNT_MESSAGE : null);
-    setDrafts(next);
+    const result = buildDrafts(input, data, defaultAccountId);
+    setMessage(parseMessage(result));
+    setDrafts(result.drafts);
   }
 
   const appendDictation = useCallback((spoken: string) => {
@@ -77,18 +89,12 @@ export function QuickAdd({ initialText, onSaved }: { initialText?: string; onSav
     setDrafts((list) => list.map((d) => (d.key === key ? { ...d, ...p } : d)));
   }
 
-  function changeType(d: DraftForm, type: TxType) {
-    const current = lookups.category(d.categoryId);
-    const categoryId = current?.type === type ? d.categoryId : (fallbackCategory(data.categories, type)?.id ?? '');
-    patch(d.key, { type, categoryId });
-  }
-
   const invalid = drafts.some((d) => !parseAmount(d.amountText) || !d.categoryId || !d.accountId || !d.date);
 
   function saveAll() {
     if (invalid || drafts.length === 0) return;
     const inputs: TransactionInput[] = drafts.map((d) => ({
-      type: d.type,
+      type: 'expense',
       amount: parseAmount(d.amountText)!,
       categoryId: d.categoryId,
       accountId: d.accountId,
@@ -96,8 +102,8 @@ export function QuickAdd({ initialText, onSaved }: { initialText?: string; onSav
       note: d.note.trim(),
     }));
     session.update((v) => addTransactions(v, inputs));
-    const total = inputs.reduce((s, i) => s + (i.type === 'expense' ? i.amount : 0), 0);
-    setMessage(`已保存 ${inputs.length} 笔${total ? `，支出 ${formatMoney(total)}` : ''}`);
+    const total = inputs.reduce((s, i) => s + i.amount, 0);
+    setMessage(`已保存 ${inputs.length} 笔，共 ${formatMoney(total)}`);
     setDrafts([]);
     setText('');
     onSaved?.();
@@ -137,9 +143,8 @@ export function QuickAdd({ initialText, onSaved }: { initialText?: string; onSav
       {drafts.length > 0 ? (
         <div className="drafts">
           {drafts.map((d) => (
-            <div key={d.key} className={`draft draft-${d.type}`}>
+            <div key={d.key} className="draft">
               <div className="draft-row">
-                <TypeToggle value={d.type} onChange={(t) => changeType(d, t)} />
                 <input
                   className="amount-input"
                   inputMode="decimal"
@@ -153,7 +158,7 @@ export function QuickAdd({ initialText, onSaved }: { initialText?: string; onSav
                 </button>
               </div>
               <div className="draft-row">
-                <CategorySelect categories={data.categories} type={d.type} value={d.categoryId} onChange={(id) => patch(d.key, { categoryId: id })} />
+                <CategorySelect categories={data.categories} type="expense" value={d.categoryId} onChange={(id) => patch(d.key, { categoryId: id })} />
                 <AccountSelect accounts={data.accounts} value={d.accountId} onChange={(id) => patch(d.key, { accountId: id })} />
                 <input type="date" value={d.date} onChange={(e) => patch(d.key, { date: e.target.value })} aria-label="日期" />
               </div>

@@ -1,18 +1,19 @@
 import { useMemo, useState } from 'react';
 import { monthKeyOf, todayISO, type MonthKey } from '../../core/dates';
-import { ACCOUNT_KIND_LABEL, type Transaction, type TxType, type VaultData } from '../../core/model';
+import type { Transaction } from '../../core/model';
 import { formatCents, formatMoney } from '../../core/money';
 import {
-  accountBalances,
-  monthlySummaries,
+  daysElapsed,
+  monthlySpending,
   monthsElapsed,
-  summarize,
-  totalsByCategory,
+  spending,
+  spendingByAccount,
+  spendingByCategory,
   transactionsInMonth,
   transactionsInYear,
-  type Summary,
+  type GroupTotal,
 } from '../../core/stats';
-import { MonthSwitcher, TypeToggle, YearSwitcher } from '../components/controls';
+import { MonthSwitcher, YearSwitcher } from '../components/controls';
 import { SummaryBar } from '../components/SummaryBar';
 import { useLookups, useVault } from '../hooks';
 
@@ -23,6 +24,7 @@ const PERIOD_LABEL: Record<Period, string> = { month: '按月', year: '按年' }
 /** F-STAT-1 ~ F-STAT-4 */
 export function StatsScreen() {
   const data = useVault();
+  const lookups = useLookups(data);
   const today = todayISO();
   const [period, setPeriod] = useState<Period>('month');
   const [month, setMonth] = useState(monthKeyOf(today));
@@ -32,7 +34,9 @@ export function StatsScreen() {
     () => (period === 'month' ? transactionsInMonth(data.transactions, month) : transactionsInYear(data.transactions, year)),
     [data.transactions, period, month, year],
   );
-  const summary = useMemo(() => summarize(txs), [txs]);
+  const total = useMemo(() => spending(txs), [txs]);
+  const byCategory = useMemo(() => spendingByCategory(txs), [txs]);
+  const byAccount = useMemo(() => spendingByAccount(txs), [txs]);
 
   function changePeriod(next: Period) {
     if (next === 'year') setYear(Number(month.slice(0, 4)));
@@ -64,12 +68,23 @@ export function StatsScreen() {
           ))}
         </div>
       </div>
-      <SummaryBar summary={summary} />
+      {period === 'month' ? (
+        <SummaryBar spending={total} periods={daysElapsed(month, today)} averageLabel="日均" />
+      ) : (
+        <SummaryBar spending={total} periods={monthsElapsed(year, today)} averageLabel="月均" />
+      )}
       {period === 'year' ? (
-        <YearTrend transactions={data.transactions} year={year} today={today} summary={summary} onOpenMonth={openMonth} />
+        <YearTrend transactions={data.transactions} year={year} today={today} yearTotal={total.total} onOpenMonth={openMonth} />
       ) : null}
-      <CategoryTotals txs={txs} data={data} />
-      <AccountBalances data={data} />
+      <TotalsCard
+        title="分类"
+        totals={byCategory}
+        label={(id) => {
+          const c = lookups.category(id);
+          return c ? `${c.icon} ${c.name}` : '未知分类';
+        }}
+      />
+      <TotalsCard title="账户" totals={byAccount} label={(id) => lookups.account(id)?.name ?? '未知账户'} />
     </div>
   );
 }
@@ -78,46 +93,31 @@ function YearTrend({
   transactions,
   year,
   today,
-  summary,
+  yearTotal,
   onOpenMonth,
 }: {
   transactions: Transaction[];
   year: number;
   today: string;
-  summary: Summary;
+  yearTotal: number;
   onOpenMonth: (month: MonthKey) => void;
 }) {
-  const months = useMemo(() => monthlySummaries(transactions, year), [transactions, year]);
-  const elapsed = monthsElapsed(year, today);
+  const months = useMemo(() => monthlySpending(transactions, year), [transactions, year]);
   const currentMonth = monthKeyOf(today);
-  const active = months.filter((m) => m.income !== 0 || m.expense !== 0);
-  const max = Math.max(0, ...months.flatMap((m) => [m.income, m.expense]));
+  const active = months.filter((m) => m.count > 0);
+  const max = Math.max(0, ...months.map((m) => m.total));
   const barHeight = (cents: number) => (cents && max ? `max(2px, ${(cents / max) * 100}%)` : '0');
 
   return (
     <section className="card stack">
-      <div className="row between wrap">
-        <h2>月度趋势</h2>
-        <span className="legend small muted">
-          <i className="dot expense" />
-          支出
-          <i className="dot income" />
-          收入
-        </span>
-      </div>
+      <h2>月度趋势</h2>
       {active.length === 0 ? (
-        <p className="empty">{year}年没有记录</p>
+        <p className="empty">{year}年没有支出记录</p>
       ) : (
         <>
-          {elapsed > 0 ? (
-            <p className="muted small">
-              月均支出 {formatMoney(Math.round(summary.expense / elapsed))} · 月均收入{' '}
-              {formatMoney(Math.round(summary.income / elapsed))}（按 {elapsed} 个月计算）
-            </p>
-          ) : null}
           <div className="trend">
             {months.map((m, i) => {
-              const label = `${i + 1}月：支出 ${formatMoney(m.expense)}，收入 ${formatMoney(m.income)}`;
+              const label = `${i + 1}月：支出 ${formatMoney(m.total)}，${m.count} 笔`;
               return (
                 <button
                   key={m.month}
@@ -128,8 +128,7 @@ function YearTrend({
                   onClick={() => onOpenMonth(m.month)}
                 >
                   <span className="trend-bars">
-                    <span className="trend-bar expense" style={{ height: barHeight(m.expense) }} />
-                    <span className="trend-bar income" style={{ height: barHeight(m.income) }} />
+                    <span className="trend-bar" style={{ height: barHeight(m.total) }} />
                   </span>
                   <span className="trend-label">{i + 1}</span>
                 </button>
@@ -141,8 +140,8 @@ function YearTrend({
               <tr>
                 <th>月份</th>
                 <th>支出</th>
-                <th>收入</th>
-                <th>结余</th>
+                <th>笔数</th>
+                <th>占全年</th>
               </tr>
             </thead>
             <tbody>
@@ -153,9 +152,9 @@ function YearTrend({
                       {Number(m.month.slice(5))}月
                     </button>
                   </td>
-                  <td>{formatCents(m.expense)}</td>
-                  <td>{formatCents(m.income)}</td>
-                  <td className={m.net < 0 ? 'expense' : ''}>{formatCents(m.net)}</td>
+                  <td>{formatCents(m.total)}</td>
+                  <td>{m.count}</td>
+                  <td>{yearTotal ? ((m.total / yearTotal) * 100).toFixed(1) : '0.0'}%</td>
                 </tr>
               ))}
             </tbody>
@@ -166,70 +165,32 @@ function YearTrend({
   );
 }
 
-function CategoryTotals({ txs, data }: { txs: Transaction[]; data: VaultData }) {
-  const lookups = useLookups(data);
-  const [type, setType] = useState<TxType>('expense');
-  const totals = useMemo(() => totalsByCategory(txs, type), [txs, type]);
+function TotalsCard({ title, totals, label }: { title: string; totals: GroupTotal[]; label: (id: string) => string }) {
   const maxTotal = totals[0]?.total ?? 0;
-
   return (
     <section className="card stack">
-      <div className="row between">
-        <h2>分类</h2>
-        <TypeToggle value={type} onChange={setType} />
-      </div>
+      <h2>{title}</h2>
       {totals.length === 0 ? (
-        <p className="empty">没有{type === 'expense' ? '支出' : '收入'}记录</p>
+        <p className="empty">没有支出记录</p>
       ) : (
         <ul className="bars">
-          {totals.map((t) => {
-            const c = lookups.category(t.categoryId);
-            return (
-              <li key={t.categoryId}>
-                <div className="bar-label">
-                  <span>
-                    {c?.icon} {c?.name ?? '未知分类'} <span className="muted small">{t.count} 笔</span>
-                  </span>
-                  <span>
-                    {formatMoney(t.total)} <span className="muted small">{(t.ratio * 100).toFixed(1)}%</span>
-                  </span>
-                </div>
-                <div className="bar-track">
-                  <div
-                    className={`bar-fill ${type}`}
-                    style={{ width: `${maxTotal ? (t.total / maxTotal) * 100 : 0}%` }}
-                  />
-                </div>
-              </li>
-            );
-          })}
+          {totals.map((t) => (
+            <li key={t.id}>
+              <div className="bar-label">
+                <span>
+                  {label(t.id)} <span className="muted small">{t.count} 笔</span>
+                </span>
+                <span>
+                  {formatMoney(t.total)} <span className="muted small">{(t.ratio * 100).toFixed(1)}%</span>
+                </span>
+              </div>
+              <div className="bar-track">
+                <div className="bar-fill" style={{ width: `${maxTotal ? (t.total / maxTotal) * 100 : 0}%` }} />
+              </div>
+            </li>
+          ))}
         </ul>
       )}
-    </section>
-  );
-}
-
-function AccountBalances({ data }: { data: VaultData }) {
-  const balances = useMemo(() => accountBalances(data), [data]);
-  return (
-    <section className="card stack">
-      <h2>账户余额</h2>
-      <ul className="plain-list">
-        {data.accounts
-          .filter((a) => !a.archived)
-          .map((a) => {
-            const balance = balances.get(a.id) ?? 0;
-            return (
-              <li key={a.id} className="row between">
-                <span>
-                  {a.name} <span className="muted small">{ACCOUNT_KIND_LABEL[a.kind]}</span>
-                </span>
-                <strong className={balance < 0 ? 'expense' : ''}>{formatMoney(balance)}</strong>
-              </li>
-            );
-          })}
-      </ul>
-      <p className="muted small">余额 = 初始余额 + 收入 − 支出，可在设置中修改初始余额。</p>
     </section>
   );
 }

@@ -3,11 +3,11 @@ import { formatDayLabel, todayISO } from '../../core/dates';
 import { fallbackCategory } from '../../core/defaults';
 import { newId } from '../../core/id';
 import { deleteRecurring, setRecurringActive, upsertRecurring } from '../../core/ledger';
-import { FREQUENCY_LABEL, type Frequency, type RecurringRule, type TxType } from '../../core/model';
+import { FREQUENCY_LABEL, type Frequency, type RecurringRule } from '../../core/model';
 import { centsToInput, formatMoney, parseAmount } from '../../core/money';
 import { applyRecurring, nextOccurrence } from '../../core/recurring';
 import { session } from '../../state/session';
-import { AccountSelect, CategorySelect, Field, TypeToggle } from '../components/controls';
+import { AccountSelect, CategorySelect, Field } from '../components/controls';
 import { useLookups, useVault } from '../hooks';
 import { navigate } from '../router';
 
@@ -29,7 +29,7 @@ export function RecurringListScreen() {
           + 新建
         </button>
       </div>
-      <p className="muted small">订阅、房租、工资等固定收支。每次解锁时会自动补记到今天为止应发生的账单。</p>
+      <p className="muted small">订阅、房租、话费等固定支出。每次解锁时会自动补记到今天为止应发生的账单。</p>
       {data.recurring.length === 0 ? (
         <p className="empty">还没有周期账单</p>
       ) : (
@@ -50,7 +50,7 @@ export function RecurringListScreen() {
                       {r.active ? (next ? ` · 下次 ${formatDayLabel(next, today)}` : ' · 已结束') : ' · 已暂停'}
                     </span>
                   </span>
-                  <span className={`tx-amount ${r.type}`}>{formatMoney(r.amount)}</span>
+                  <span className="tx-amount">{formatMoney(r.amount)}</span>
                 </button>
                 <button
                   type="button"
@@ -77,7 +77,7 @@ export function RecurringEditScreen({ id }: { id?: string }) {
   const subscription = data.categories.find((c) => c.name === '订阅' && !c.archived);
 
   const [name, setName] = useState(existing?.name ?? '');
-  const [type, setType] = useState<TxType>(existing?.type ?? 'expense');
+  const type = existing?.type ?? 'expense';
   const [amountText, setAmountText] = useState(existing ? centsToInput(existing.amount) : '');
   const [categoryId, setCategoryId] = useState(
     existing?.categoryId ?? subscription?.id ?? fallbackCategory(data.categories, 'expense')?.id ?? '',
@@ -102,11 +102,6 @@ export function RecurringEditScreen({ id }: { id?: string }) {
   const valid =
     name.trim() && amount && categoryId && accountId && startDate && interval >= 1 && (!endDate || endDate >= startDate);
   const backfills = !existing && startDate < today;
-
-  function changeType(t: TxType) {
-    setType(t);
-    if (lookups.category(categoryId)?.type !== t) setCategoryId(fallbackCategory(data.categories, t)?.id ?? '');
-  }
 
   function save(e: FormEvent) {
     e.preventDefault();
@@ -142,7 +137,6 @@ export function RecurringEditScreen({ id }: { id?: string }) {
       <Field label="名称">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：iCloud 200GB" autoFocus={!existing} />
       </Field>
-      <TypeToggle value={type} onChange={changeType} />
       <div className="grid-2">
         <Field label="金额（元）">
           <input className="amount-input" inputMode="decimal" value={amountText} onChange={(e) => setAmountText(e.target.value)} />

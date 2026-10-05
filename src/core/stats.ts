@@ -1,10 +1,9 @@
-import { monthKeyOf, type MonthKey } from './dates';
-import type { Cents, ISODate, Transaction, TxType, VaultData } from './model';
+import { daysInMonth, monthKeyOf, type MonthKey } from './dates';
+import type { Cents, ISODate, Transaction } from './model';
 
-export interface Summary {
-  income: Cents;
-  expense: Cents;
-  net: Cents;
+/** The app only tracks spending (spec §2); income records may exist in data but are never counted. */
+export function expensesOf(txs: Transaction[]): Transaction[] {
+  return txs.filter((t) => t.type === 'expense');
 }
 
 export function transactionsInMonth(txs: Transaction[], month: MonthKey): Transaction[] {
@@ -16,12 +15,27 @@ export function transactionsInYear(txs: Transaction[], year: number): Transactio
   return txs.filter((t) => t.date.startsWith(prefix));
 }
 
-export interface MonthSummary extends Summary {
+export interface Spending {
+  total: Cents;
+  count: number;
+}
+
+export function spending(txs: Transaction[]): Spending {
+  let total = 0;
+  let count = 0;
+  for (const t of expensesOf(txs)) {
+    total += t.amount;
+    count += 1;
+  }
+  return { total, count };
+}
+
+export interface MonthSpending extends Spending {
   month: MonthKey;
 }
 
 /** F-STAT-4: one entry per calendar month of `year`, January first, empty months included. */
-export function monthlySummaries(txs: Transaction[], year: number): MonthSummary[] {
+export function monthlySpending(txs: Transaction[], year: number): MonthSpending[] {
   const byMonth = new Map<MonthKey, Transaction[]>();
   for (const t of transactionsInYear(txs, year)) {
     const key = monthKeyOf(t.date);
@@ -31,7 +45,7 @@ export function monthlySummaries(txs: Transaction[], year: number): MonthSummary
   }
   return Array.from({ length: 12 }, (_, i) => {
     const month = `${year}-${String(i + 1).padStart(2, '0')}`;
-    return { month, ...summarize(byMonth.get(month) ?? []) };
+    return { month, ...spending(byMonth.get(month) ?? []) };
   });
 }
 
@@ -43,64 +57,58 @@ export function monthsElapsed(year: number, today: ISODate): number {
   return Number(today.slice(5, 7));
 }
 
-export function summarize(txs: Transaction[]): Summary {
-  let income = 0;
-  let expense = 0;
-  for (const t of txs) {
-    if (t.type === 'income') income += t.amount;
-    else expense += t.amount;
-  }
-  return { income, expense, net: income - expense };
+/** Days of `month` that have started by `today`: the whole month if past, 0 if future. */
+export function daysElapsed(month: MonthKey, today: ISODate): number {
+  const current = monthKeyOf(today);
+  if (month > current) return 0;
+  if (month < current) return daysInMonth(Number(month.slice(0, 4)), Number(month.slice(5, 7)));
+  return Number(today.slice(8, 10));
 }
 
-export interface CategoryTotal {
-  categoryId: string;
+export interface GroupTotal {
+  id: string;
   total: Cents;
   count: number;
-  /** Share of the type's total, 0..1 */
+  /** Share of total spending, 0..1 */
   ratio: number;
 }
 
-export function totalsByCategory(txs: Transaction[], type: TxType): CategoryTotal[] {
+function spendingBy(txs: Transaction[], keyOf: (t: Transaction) => string): GroupTotal[] {
   const map = new Map<string, { total: number; count: number }>();
   let sum = 0;
-  for (const t of txs) {
-    if (t.type !== type) continue;
-    const entry = map.get(t.categoryId) ?? { total: 0, count: 0 };
+  for (const t of expensesOf(txs)) {
+    const key = keyOf(t);
+    const entry = map.get(key) ?? { total: 0, count: 0 };
     entry.total += t.amount;
     entry.count += 1;
-    map.set(t.categoryId, entry);
+    map.set(key, entry);
     sum += t.amount;
   }
   return [...map.entries()]
-    .map(([categoryId, { total, count }]) => ({
-      categoryId,
-      total,
-      count,
-      ratio: sum === 0 ? 0 : total / sum,
-    }))
+    .map(([id, { total, count }]) => ({ id, total, count, ratio: sum === 0 ? 0 : total / sum }))
     .sort((a, b) => b.total - a.total);
 }
 
-export function accountBalances(data: VaultData): Map<string, Cents> {
-  const balances = new Map<string, Cents>(data.accounts.map((a) => [a.id, a.initialBalance]));
-  for (const t of data.transactions) {
-    const current = balances.get(t.accountId) ?? 0;
-    balances.set(t.accountId, current + (t.type === 'income' ? t.amount : -t.amount));
-  }
-  return balances;
+/** F-STAT-2, largest first. */
+export function spendingByCategory(txs: Transaction[]): GroupTotal[] {
+  return spendingBy(txs, (t) => t.categoryId);
+}
+
+/** F-STAT-3, largest first. */
+export function spendingByAccount(txs: Transaction[]): GroupTotal[] {
+  return spendingBy(txs, (t) => t.accountId);
 }
 
 export interface DayGroup {
   date: ISODate;
   items: Transaction[];
-  summary: Summary;
+  total: Cents;
 }
 
-/** Groups by date, newest day first; within a day, newest entry first (ties keep insertion order). */
+/** Expenses grouped by date, newest day first; within a day, newest entry first (ties keep insertion order). */
 export function groupByDate(txs: Transaction[]): DayGroup[] {
   const map = new Map<ISODate, Transaction[]>();
-  for (const t of txs) {
+  for (const t of expensesOf(txs)) {
     const list = map.get(t.date) ?? [];
     list.push(t);
     map.set(t.date, list);
@@ -110,6 +118,6 @@ export function groupByDate(txs: Transaction[]): DayGroup[] {
     .map(([date, items]) => ({
       date,
       items: items.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-      summary: summarize(items),
+      total: spending(items).total,
     }));
 }

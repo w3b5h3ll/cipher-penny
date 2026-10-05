@@ -3,39 +3,17 @@ import { todayISO } from '../../core/dates';
 import { toCSV } from '../../core/csv';
 import { newId } from '../../core/id';
 import { updateSettings, upsertAccount, upsertCategory } from '../../core/ledger';
-import {
-  ACCOUNT_KIND_LABEL,
-  TX_TYPE_LABEL,
-  type Account,
-  type AccountKind,
-  type Category,
-  type TxType,
-} from '../../core/model';
-import { centsToInput, formatMoney, parseAmount } from '../../core/money';
+import { ACCOUNT_KIND_LABEL, type Account, type AccountKind, type Category } from '../../core/model';
 import { session, WrongPasswordError } from '../../state/session';
 import { Field } from '../components/controls';
 import { downloadText, errorMessage } from '../download';
 import { useVault } from '../hooks';
 import { ImportBackup } from './ImportBackup';
 
-/** Signed amount input for initial balances (credit cards can start negative). */
-function parseSignedAmount(text: string): number | null {
-  const t = text.trim();
-  const negative = t.startsWith('-');
-  const cents = parseAmount(negative ? t.slice(1) : t);
-  return cents === null ? null : negative ? -cents : cents;
-}
-
-function signedToInput(cents: number): string {
-  return cents < 0 ? `-${centsToInput(-cents)}` : centsToInput(cents);
-}
-
 function AccountEditor({ account, onDone }: { account?: Account; onDone: () => void }) {
   const [name, setName] = useState(account?.name ?? '');
   const [kind, setKind] = useState<AccountKind>(account?.kind ?? 'ewallet');
-  const [balanceText, setBalanceText] = useState(account ? signedToInput(account.initialBalance) : '0');
-  const balance = parseSignedAmount(balanceText);
-  const valid = name.trim() && balance !== null;
+  const valid = name.trim().length > 0;
 
   function save(e: FormEvent) {
     e.preventDefault();
@@ -46,7 +24,7 @@ function AccountEditor({ account, onDone }: { account?: Account; onDone: () => v
         id: account?.id ?? newId(),
         name: name.trim(),
         kind,
-        initialBalance: balance!,
+        initialBalance: account?.initialBalance ?? 0,
         archived: account?.archived ?? false,
       }),
     );
@@ -63,14 +41,6 @@ function AccountEditor({ account, onDone }: { account?: Account; onDone: () => v
           </option>
         ))}
       </select>
-      <input
-        inputMode="decimal"
-        value={balanceText}
-        onChange={(e) => setBalanceText(e.target.value)}
-        aria-label="初始余额"
-        title="初始余额，信用卡欠款填负数"
-        className="narrow-amount"
-      />
       <button type="submit" className="primary" disabled={!valid}>
         保存
       </button>
@@ -102,7 +72,7 @@ function AccountsSection() {
           ) : (
             <li key={a.id} className={`row between ${a.archived ? 'archived' : ''}`}>
               <span>
-                {a.name} <span className="muted small">{ACCOUNT_KIND_LABEL[a.kind]} · 初始 {formatMoney(a.initialBalance)}</span>
+                {a.name} <span className="muted small">{ACCOUNT_KIND_LABEL[a.kind]}</span>
                 {a.archived ? <span className="badge">已归档</span> : null}
               </span>
               <span className="row">
@@ -131,7 +101,7 @@ function AccountsSection() {
   );
 }
 
-function CategoryEditor({ category, type, onDone }: { category?: Category; type: TxType; onDone: () => void }) {
+function CategoryEditor({ category, onDone }: { category?: Category; onDone: () => void }) {
   const [icon, setIcon] = useState(category?.icon ?? '🏷️');
   const [name, setName] = useState(category?.name ?? '');
   const [keywords, setKeywords] = useState(category?.keywords.join('，') ?? '');
@@ -145,7 +115,7 @@ function CategoryEditor({ category, type, onDone }: { category?: Category; type:
         ...category,
         id: category?.id ?? newId(),
         name: name.trim(),
-        type: category?.type ?? type,
+        type: category?.type ?? 'expense',
         icon: icon.trim() || '🏷️',
         keywords: keywords
           .split(/[,，、\s]+/)
@@ -180,32 +150,22 @@ function CategoryEditor({ category, type, onDone }: { category?: Category; type:
 
 function CategoriesSection() {
   const data = useVault();
-  const [type, setType] = useState<TxType>('expense');
   const [editing, setEditing] = useState<string | null>(null);
-  const list = data.categories.filter((c) => c.type === type);
+  const list = data.categories.filter((c) => c.type === 'expense');
 
   return (
     <section className="card stack">
       <div className="row between">
         <h2>分类与识别关键词</h2>
-        <div className="row">
-          <select value={type} onChange={(e) => setType(e.target.value as TxType)} aria-label="分类类型">
-            {(['expense', 'income'] as const).map((t) => (
-              <option key={t} value={t}>
-                {TX_TYPE_LABEL[t]}
-              </option>
-            ))}
-          </select>
-          <button type="button" onClick={() => setEditing('new')}>
-            + 新增
-          </button>
-        </div>
+        <button type="button" onClick={() => setEditing('new')}>
+          + 新增
+        </button>
       </div>
       <ul className="plain-list">
         {list.map((c) =>
           editing === c.id ? (
             <li key={c.id}>
-              <CategoryEditor category={c} type={type} onDone={() => setEditing(null)} />
+              <CategoryEditor category={c} onDone={() => setEditing(null)} />
             </li>
           ) : (
             <li key={c.id} className={`row between ${c.archived ? 'archived' : ''}`}>
@@ -233,7 +193,7 @@ function CategoriesSection() {
         )}
         {editing === 'new' ? (
           <li>
-            <CategoryEditor type={type} onDone={() => setEditing(null)} />
+            <CategoryEditor onDone={() => setEditing(null)} />
           </li>
         ) : null}
       </ul>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatDayLabel, monthKeyOf, todayISO } from '../../core/dates';
-import { formatMoney } from '../../core/money';
-import { groupByDate, summarize, transactionsInMonth } from '../../core/stats';
+import { formatCents, formatMoney } from '../../core/money';
+import { daysElapsed, groupByDate, spending, transactionsInMonth } from '../../core/stats';
 import { MonthSwitcher } from '../components/controls';
 import { SummaryBar } from '../components/SummaryBar';
 import { useLookups, useVault } from '../hooks';
@@ -17,7 +17,7 @@ export function HomeScreen({ initialText }: { initialText?: string }) {
 
   const monthTxs = useMemo(() => transactionsInMonth(data.transactions, month), [data.transactions, month]);
   const groups = useMemo(() => groupByDate(monthTxs), [monthTxs]);
-  const summary = useMemo(() => summarize(monthTxs), [monthTxs]);
+  const total = useMemo(() => spending(monthTxs), [monthTxs]);
 
   return (
     <div className="stack">
@@ -30,7 +30,7 @@ export function HomeScreen({ initialText }: { initialText?: string }) {
         </button>
       </div>
 
-      <SummaryBar summary={summary} />
+      <SummaryBar spending={total} periods={daysElapsed(month, today)} averageLabel="日均" />
 
       {groups.length === 0 ? (
         <p className="empty">这个月还没有账单</p>
@@ -39,11 +39,7 @@ export function HomeScreen({ initialText }: { initialText?: string }) {
           <section key={g.date} className="card day">
             <header className="day-header">
               <span>{formatDayLabel(g.date, today)}</span>
-              <span className="muted small">
-                {g.summary.expense ? `支出 ${formatMoney(g.summary.expense)}` : ''}
-                {g.summary.expense && g.summary.income ? ' · ' : ''}
-                {g.summary.income ? `收入 ${formatMoney(g.summary.income)}` : ''}
-              </span>
+              <span className="muted small">支出 {formatMoney(g.total)}</span>
             </header>
             <ul className="tx-list">
               {g.items.map((t) => {
@@ -64,10 +60,7 @@ export function HomeScreen({ initialText }: { initialText?: string }) {
                           {[t.note, account?.name].filter(Boolean).join(' · ')}
                         </span>
                       </span>
-                      <span className={`tx-amount ${t.type}`}>
-                        {t.type === 'expense' ? '-' : '+'}
-                        {formatMoney(t.amount).slice(1)}
-                      </span>
+                      <span className="tx-amount">{formatCents(t.amount)}</span>
                     </button>
                   </li>
                 );
