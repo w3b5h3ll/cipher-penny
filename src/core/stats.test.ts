@@ -24,7 +24,7 @@ function setup(): { data: VaultData; food: string; transport: string; salary: st
     ...p,
   });
   const data = addTransactions(
-    upsertAccount(base, { ...base.accounts[0]!, initialBalance: 10000 }),
+    upsertAccount(base, { ...base.accounts.find((a) => a.id === cash)!, initialBalance: 10000 }),
     [
       tx({ amount: 3500, date: '2026-10-01' }),
       tx({ amount: 2800, categoryId: transport, accountId: wechat, date: '2026-10-02' }),

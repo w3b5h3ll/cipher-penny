@@ -1,11 +1,12 @@
 import { newId } from './id';
 import type { Account, AccountKind, Category, TxType, VaultData } from './model';
 
+// The first active account is the default for quick entry.
 const DEFAULT_ACCOUNTS: Array<[string, AccountKind]> = [
-  ['现金', 'cash'],
   ['微信', 'ewallet'],
   ['支付宝', 'ewallet'],
   ['银行卡', 'debit'],
+  ['现金', 'cash'],
 ];
 
 const DEFAULT_CATEGORIES: Array<[TxType, string, string, string[]]> = [
