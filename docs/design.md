@@ -1,6 +1,6 @@
 # CipherPenny 技术设计（Design）
 
-> 状态：v0.1 · 对应需求：[spec.md](./spec.md) v0.1
+> 状态：v0.2 · 对应需求：[spec.md](./spec.md) v0.2
 
 ## 1. 总体架构
 
@@ -23,7 +23,8 @@
 
 分层规则（由代码评审保证）：
 
-- `core/` 不依赖 DOM、React 和浏览器存储，可以在 Node 中直接测试，将来可复用到 Capacitor 或 React Native。
+- `core/` 不依赖 DOM、React 和浏览器存储，可以在 Node 中直接测试。
+- 跨端（以后的 Flutter Android 应用）共享的是**格式规范和测试向量**，不是代码：[vault-format.md](./vault-format.md) 定义加密信封和数据结构，`fixtures/` 下的 JSON 向量由 TS 测试和以后的 Dart 测试共同使用。
 - `crypto/` 只依赖 `globalThis.crypto`（浏览器和 Node 都有）。
 - `storage/` 只读写密文信封，不知道明文结构。
 - `ui/` 不直接调用 `crypto/` 或 `storage/`，统一经过 `state/`。
@@ -32,7 +33,7 @@
 
 | 决策 | 选择 | 理由 / 放弃的方案 |
 | --- | --- | --- |
-| D1 形态 | PWA，部署 GitHub Pages | 零成本、跨端；以后用 Capacitor 打包。放弃直接写原生（成本高，单平台）。 |
+| D1 形态 | Web（PWA），部署 GitHub Pages；Android 以后用 Flutter 单独实现 | 零成本，桌面优先。不做 iOS。两端通过加密数据格式互通，而不是共享代码，所以格式必须有独立规范和测试向量（D10）。 |
 | D2 框架 | React 19 + TypeScript + Vite | 生态和 AI 工具支持最好；放弃 Svelte（更轻，但团队/AI 熟悉度略低）。 |
 | D3 运行时依赖 | 仅 `react`、`react-dom` | 降低供应链和 XSS 风险。路由（hash）、状态管理、IndexedDB 封装、图表都自己写，代码量很小。 |
 | D4 KDF | PBKDF2-SHA256，60 万次迭代 | WebCrypto 内置、零依赖。Argon2id 更抗 GPU 破解，但需要 WASM 依赖，且 GitHub Pages 无法开启 COOP/COEP 多线程。文件格式中记录 KDF 参数，以后可升级。 |
@@ -41,6 +42,7 @@
 | D7 路由 | hash 路由（`#/stats`） | GitHub Pages 不支持 SPA 回退，避免刷新 404。 |
 | D8 自然语言解析 | 本地规则解析器 | 离线、零成本、可预测、可测试；大模型解析作为以后的可选增强。 |
 | D9 样式 | 原生 CSS + CSS 变量 | 无构建插件依赖，自带深色模式。 |
+| D10 跨端互通 | 格式规范 + JSON 测试向量 | 加密格式只用 PBKDF2、AES-GCM、标准 Base64 这类各语言都有标准实现的原语（Dart 可用 `cryptography` 包）。解析器的期望行为也以 JSON 用例描述，Dart 版本跑同一份用例即可对齐。 |
 
 ## 3. 数据模型（明文，仅存在于内存）
 
@@ -93,16 +95,7 @@ JSON.stringify(VaultData) ──▶ 密文 payload
 
 ### 4.2 信封格式（存储和备份文件共用）
 
-```json
-{
-  "format": "cipher-penny-vault",
-  "version": 1,
-  "kdf": { "name": "PBKDF2", "hash": "SHA-256", "iterations": 600000, "salt": "<base64>" },
-  "wrappedKey": { "iv": "<base64>", "data": "<base64>" },
-  "payload": { "iv": "<base64>", "data": "<base64>" },
-  "updatedAt": "2026-10-05T12:00:00.000Z"
-}
-```
+规范性定义见 [vault-format.md](./vault-format.md)，这里只说明设计取舍：
 
 - 读取时严格校验 `format`、`version` 和字段类型，不支持的版本抛出 `UnsupportedFormatError`。
 - KDF 参数没有单独做认证：如果被篡改，派生出的 KEK 是错的，unwrap 会失败，不会导致数据被静默替换。

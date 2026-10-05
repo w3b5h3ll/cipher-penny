@@ -27,6 +27,12 @@ pnpm check            # typecheck + lint + test + build，提交前必须通过
 - `src/ui/`：React 界面。不直接调用 `crypto/` 或 `storage/`。
 - 测试与源码放在一起：`foo.ts` 对应 `foo.test.ts`。
 
+## 跨端格式
+
+- 加密信封和账本数据结构由 `docs/vault-format.md` 规范性定义，以后的 Flutter Android 应用依赖它。
+- 修改格式必须同时更新规范、提升 `version`、保留旧版本读取能力，并更新 `fixtures/` 测试向量。
+- 解析器的行为由 `fixtures/parser-cases.json` 描述。修改解析逻辑时先改用例，再改代码。
+
 ## 编码约定
 
 - TypeScript strict；不要用 `any`，确实需要时用 `unknown` 并收窄类型。

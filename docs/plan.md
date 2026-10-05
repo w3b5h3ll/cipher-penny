@@ -5,7 +5,7 @@
 
 ## M0 基础设施
 
-- [ ] 规格文档：spec、design、plan、AGENTS.md
+- [ ] 规格文档：spec、design、plan、AGENTS.md、vault-format（跨端格式规范）
 - [ ] 项目骨架：Vite + React + TS（strict）+ Vitest + ESLint
 - [ ] PWA（manifest、图标、Service Worker）与生产 CSP（N-SEC-2、N-OFF-1）
 - [ ] GitHub Actions：CI 与 Pages 部署（N-DEP-1）
@@ -19,12 +19,13 @@
 - [ ] 账本增删改操作（F-TX-1、F-TX-3）
 - [ ] 周期账单生成（F-REC-1 ~ F-REC-5）
 - [ ] 统计：月度汇总、分类汇总、账户余额（F-STAT-1 ~ F-STAT-3）
-- [ ] 自然语言解析器（F-QA-2 ~ F-QA-6）
+- [ ] 自然语言解析器，用例放在 `fixtures/parser-cases.json`（F-QA-2 ~ F-QA-6）
 - [ ] CSV 导出（F-IO-3）
 
 ### 加密与存储
 
 - [ ] 信封加密：创建、打开、保存、改密码、格式校验（F-VAULT-3、F-VAULT-5、F-IO-1、F-IO-2）
+- [ ] 生成并提交加密测试向量 `fixtures/vault-v1.json`（N-PORT-1）
 - [ ] IndexedDB 存储
 
 ### 会话与界面
@@ -42,7 +43,7 @@
 
 - [ ] `pnpm check` 全部通过（类型检查、lint、测试、构建）
 - [ ] 浏览器手工验收 spec 中标注 `[手工]` 的项目
-- [ ] 部署到 GitHub Pages 并在手机上安装 PWA 验证
+- [ ] 部署到 GitHub Pages，在桌面 Chrome 和 Android Chrome 上验证（含 PWA 安装）
 
 ## M2 之后（待 spec 第 7 节的问题确认后细化）
 
@@ -52,4 +53,4 @@
 - [ ] 账户间转账、信用卡还款
 - [ ] 预算与超支提醒
 - [ ] 导入支付宝、微信账单 CSV 进行对账
-- [ ] Capacitor 打包，接入原生语音识别、Face ID、Siri
+- [ ] Flutter Android 应用（独立仓库）：按 vault-format.md 实现格式读写，跑通 `fixtures/` 下的全部测试向量；需要先确定同步方案

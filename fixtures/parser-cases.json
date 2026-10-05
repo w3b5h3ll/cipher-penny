@@ -1,0 +1,164 @@
+{
+  "description": "Language-agnostic test vectors for the natural-language entry parser (spec F-QA-2 ~ F-QA-6). Categories and accounts refer to the built-in defaults by name. A missing 'account' means no account was detected.",
+  "today": "2026-10-05",
+  "cases": [
+    {
+      "name": "basic expense",
+      "input": "午饭 35",
+      "expected": [{ "type": "expense", "amount": 3500, "category": "餐饮", "date": "2026-10-05", "note": "午饭" }]
+    },
+    {
+      "name": "two entries, date carries forward",
+      "input": "昨天打车28，晚上和朋友吃饭260",
+      "expected": [
+        { "type": "expense", "amount": 2800, "category": "交通", "date": "2026-10-04", "note": "打车" },
+        { "type": "expense", "amount": 26000, "category": "餐饮", "date": "2026-10-04", "note": "晚上和朋友吃饭" }
+      ]
+    },
+    {
+      "name": "space separated entries",
+      "input": "早上咖啡 18 中午外卖 32 晚上打车回家 46",
+      "expected": [
+        { "type": "expense", "amount": 1800, "category": "餐饮", "date": "2026-10-05", "note": "早上咖啡" },
+        { "type": "expense", "amount": 3200, "category": "餐饮", "date": "2026-10-05", "note": "中午外卖" },
+        { "type": "expense", "amount": 4600, "category": "交通", "date": "2026-10-05", "note": "晚上打车回家" }
+      ]
+    },
+    {
+      "name": "date-only segment sets context",
+      "input": "前天，早餐 12，午饭 25",
+      "expected": [
+        { "type": "expense", "amount": 1200, "category": "餐饮", "date": "2026-10-03", "note": "早餐" },
+        { "type": "expense", "amount": 2500, "category": "餐饮", "date": "2026-10-03", "note": "午饭" }
+      ]
+    },
+    {
+      "name": "conjunction separator",
+      "input": "打车 30 然后 吃饭 50",
+      "expected": [
+        { "type": "expense", "amount": 3000, "category": "交通", "date": "2026-10-05", "note": "打车" },
+        { "type": "expense", "amount": 5000, "category": "餐饮", "date": "2026-10-05", "note": "吃饭" }
+      ]
+    },
+    {
+      "name": "chinese numeral with unit",
+      "input": "三十五块 午饭",
+      "expected": [{ "type": "expense", "amount": 3500, "category": "餐饮", "date": "2026-10-05", "note": "午饭" }]
+    },
+    {
+      "name": "chinese yuan and jiao",
+      "input": "奶茶三块五",
+      "expected": [{ "type": "expense", "amount": 350, "category": "餐饮", "date": "2026-10-05", "note": "奶茶" }]
+    },
+    {
+      "name": "mao only",
+      "input": "停车费5毛",
+      "expected": [{ "type": "expense", "amount": 50, "category": "交通", "date": "2026-10-05", "note": "停车费" }]
+    },
+    {
+      "name": "yen sign prefix",
+      "input": "¥88 话费",
+      "expected": [{ "type": "expense", "amount": 8800, "category": "通讯", "date": "2026-10-05", "note": "话费" }]
+    },
+    {
+      "name": "large chinese numeral",
+      "input": "一千二百元 机票",
+      "expected": [{ "type": "expense", "amount": 120000, "category": "交通", "date": "2026-10-05", "note": "机票" }]
+    },
+    {
+      "name": "chinese numeral after spend verb, 一块 meaning together",
+      "input": "和朋友一块吃饭 花了两百",
+      "expected": [{ "type": "expense", "amount": 20000, "category": "餐饮", "date": "2026-10-05", "note": "和朋友一块吃饭" }]
+    },
+    {
+      "name": "colloquial numeral, income hint",
+      "input": "年终奖到账两万三",
+      "expected": [{ "type": "income", "amount": 2300000, "category": "奖金", "date": "2026-10-05", "note": "年终奖" }]
+    },
+    {
+      "name": "decimal amount with month-day date",
+      "input": "10月1日 高铁票 553.5",
+      "expected": [{ "type": "expense", "amount": 55350, "category": "交通", "date": "2026-10-01", "note": "高铁票" }]
+    },
+    {
+      "name": "future month-day falls back to last year",
+      "input": "12月24日 礼物 300",
+      "expected": [{ "type": "expense", "amount": 30000, "category": "人情", "date": "2025-12-24", "note": "礼物" }]
+    },
+    {
+      "name": "full date",
+      "input": "2026-09-15 体检 680",
+      "expected": [{ "type": "expense", "amount": 68000, "category": "医疗", "date": "2026-09-15", "note": "体检" }]
+    },
+    {
+      "name": "day of month",
+      "input": "3号 房租 4500",
+      "expected": [{ "type": "expense", "amount": 450000, "category": "居住", "date": "2026-10-03", "note": "房租" }]
+    },
+    {
+      "name": "future day of month falls back to last month",
+      "input": "30号 电费 120",
+      "expected": [{ "type": "expense", "amount": 12000, "category": "居住", "date": "2026-09-30", "note": "电费" }]
+    },
+    {
+      "name": "this week weekday",
+      "input": "周六 超市 230",
+      "expected": [{ "type": "expense", "amount": 23000, "category": "购物", "date": "2026-10-03", "note": "超市" }]
+    },
+    {
+      "name": "last week weekday",
+      "input": "上周五 电影 90",
+      "expected": [{ "type": "expense", "amount": 9000, "category": "娱乐", "date": "2026-10-02", "note": "电影" }]
+    },
+    {
+      "name": "relative day, no category match",
+      "input": "大前天 理发 40",
+      "expected": [{ "type": "expense", "amount": 4000, "category": "其他", "date": "2026-10-02", "note": "理发" }]
+    },
+    {
+      "name": "line number is not a date or amount",
+      "input": "坐5号线地铁 4元",
+      "expected": [{ "type": "expense", "amount": 400, "category": "交通", "date": "2026-10-05", "note": "坐5号线地铁" }]
+    },
+    {
+      "name": "quantity is not an amount, longest keyword wins",
+      "input": "买了2杯咖啡 40",
+      "expected": [{ "type": "expense", "amount": 4000, "category": "餐饮", "date": "2026-10-05", "note": "买了2杯咖啡" }]
+    },
+    {
+      "name": "income hint prefers income category",
+      "input": "收到红包200",
+      "expected": [{ "type": "income", "amount": 20000, "category": "红包收入", "date": "2026-10-05", "note": "收到红包" }]
+    },
+    {
+      "name": "keyword tie prefers expense",
+      "input": "发红包200",
+      "expected": [{ "type": "expense", "amount": 20000, "category": "人情", "date": "2026-10-05", "note": "发红包" }]
+    },
+    {
+      "name": "salary, filler stripped from note",
+      "input": "工资到账 15000",
+      "expected": [{ "type": "income", "amount": 1500000, "category": "工资", "date": "2026-10-05", "note": "工资" }]
+    },
+    {
+      "name": "income category without hint word",
+      "input": "退款 50",
+      "expected": [{ "type": "income", "amount": 5000, "category": "退款", "date": "2026-10-05", "note": "退款" }]
+    },
+    {
+      "name": "account detected and removed from note",
+      "input": "用微信付了35",
+      "expected": [{ "type": "expense", "amount": 3500, "category": "其他", "account": "微信", "date": "2026-10-05", "note": "" }]
+    },
+    {
+      "name": "subscription keyword is case-insensitive",
+      "input": "支付宝 icloud 21",
+      "expected": [{ "type": "expense", "amount": 2100, "category": "订阅", "account": "支付宝", "date": "2026-10-05", "note": "icloud" }]
+    },
+    {
+      "name": "no amount, no draft",
+      "input": "今天心情不错",
+      "expected": []
+    }
+  ]
+}
