@@ -41,7 +41,8 @@
 | D6 存储粒度 | 整个账本作为一个加密 JSON 文档 | 个人账本规模小（1 万笔约 2 MB 明文），整体加密耗时可接受；格式简单，导出、备份、以后同步都是同一个文件。代价是每次保存都重新加密全量数据，通过 300 ms 防抖缓解。 |
 | D7 路由 | hash 路由（`#/stats`） | GitHub Pages 不支持 SPA 回退，避免刷新 404。 |
 | D8 自然语言解析 | 本地规则解析器 | 离线、零成本、可预测、可测试；大模型解析作为以后的可选增强。 |
-| D9 样式 | 原生 CSS + CSS 变量 | 无构建插件依赖，自带深色模式。 |
+| D9 视觉规范 | 原生 CSS，变量取值参考 **TDesign 设计令牌**；不引入任何组件库 | 比较过的方案：**Ant Design** 的 CSS-in-JS 会在运行时注入 `<style>`，必须放开 CSP 的 `style-src 'unsafe-inline'`，而且是大体积运行时依赖；**IBM Carbon** 偏英文企业风格，中文排版考虑少；Arco、Semi 和 TDesign 类似，但没有 Flutter 版。**TDesign** 以中文场景为先，同时有桌面和移动端规范，而且有官方的 **TDesign Flutter**，以后 Android 版可以直接用它的组件，两端视觉一致。只借用令牌而不装 `tdesign-react`，既保持了零第三方运行时依赖和严格 CSP，也不受组件库升级影响。品牌色沿用图标的琥珀色（取 TDesign 橙色色板），功能色（成功、错误）、中性灰、圆角、字号、阴影都用 TDesign 的取值。 |
+| D11 字体 | 用 Fontsource 自托管 Inter、思源黑体（Noto Sans SC）、JetBrains Mono 的可变字体 | CSP 只允许同源资源，国内也访问不了 Google Fonts，所以必须自托管。字体包只包含 woff2 和 CSS，不含 JS，放在 `devDependencies`，构建时打包进 `dist/`。思源黑体按 unicode-range 切成约 100 片（共 4.5 MB），浏览器只下载页面用到的切片。可变字体比静态 400 + 600 两个字重（7.4 MB）更小。`font-family` 中把本机的 `Source Han Sans SC` 和 `Noto Sans CJK SC` 排在网络字体前面，本机装了就不会下载。字体不放进 Service Worker 的预缓存，改为运行时 CacheFirst 缓存，避免首次安装就下载全部中文切片。 |
 | D10 跨端互通 | 格式规范 + JSON 测试向量 | 加密格式只用 PBKDF2、AES-GCM、标准 Base64 这类各语言都有标准实现的原语（Dart 可用 `cryptography` 包）。解析器的期望行为也以 JSON 用例描述，Dart 版本跑同一份用例即可对齐。 |
 
 ## 3. 数据模型（明文，仅存在于内存）
@@ -160,6 +161,6 @@ loading ──有信封──▶ locked ──正确密码──▶ unlocked ─
 ## 7. 构建与部署
 
 - 使用 Vite 的 `base: '/cipher-penny/'`（可通过 `BASE_PATH` 覆盖）。
-- 用 `vite-plugin-pwa` 生成 Service Worker 和 manifest（`registerType: autoUpdate`）。
+- 用 `vite-plugin-pwa` 生成 Service Worker 和 manifest（`registerType: autoUpdate`）。vite-plugin-pwa 2 不再自动开启 `skipWaiting` / `clientsClaim`，配置里必须显式打开，否则新版本会一直停在 waiting 状态，用户永远拿不到更新。新版本在下次打开应用时生效。
 - 自定义 Vite 插件只在生产构建时向 `index.html` 注入 CSP `<meta>`（开发模式下 Vite 的热更新需要内联脚本）。
 - GitHub Actions 依次执行：安装依赖（锁文件）→ 类型检查 → lint → 测试 → 构建 → 推送到 `master` 时部署 Pages。

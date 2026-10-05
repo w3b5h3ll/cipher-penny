@@ -1,6 +1,6 @@
 # CipherPenny 需求规格（Spec）
 
-> 状态：v0.2 草案 · 负责人：Paul · 最后更新：2026-10-05（v0.2：确定只做 Web 端，Android 以后用 Flutter，新增格式互通要求）
+> 状态：v0.3 草案 · 负责人：Paul · 最后更新：2026-10-05（v0.2：确定只做 Web 端，Android 以后用 Flutter，新增格式互通要求；v0.3：确定字体和视觉规范）
 >
 > 本文档定义“做什么”和“怎样算做完”。“怎么做”见 [design.md](./design.md)，进度见 [plan.md](./plan.md)。
 > 需求编号（如 `F-QA-2`）在代码、测试和 PR 描述中引用，修改需求时同步修改本文档。
@@ -152,6 +152,8 @@ AC：
 | N-UX-1 | 响应式布局：桌面端居中显示，窄屏（最小 360px）也可正常使用；支持系统深色模式。 |
 | N-PORT-1 | 加密信封格式、明文数据结构、KDF 参数和解析规则以文档加测试向量的形式定义，不依赖 TypeScript 实现细节。 |
 | N-UX-2 | 界面语言为简体中文。 |
+| N-UX-3 | 字体：中文使用思源黑体（Noto Sans SC，与 Source Han Sans 同源），英文和数字使用 Inter，代码和技术性文本使用 JetBrains Mono。字体随站点自托管，不从第三方加载；本机已安装思源黑体时优先使用本机字体。 |
+| N-UX-4 | 视觉规范参考 TDesign 的设计令牌（颜色、圆角、字号、间距、阴影），不引入组件库。 |
 | N-DEP-1 | 推送到 `master` 后由 GitHub Actions 自动测试并部署到 GitHub Pages。 |
 
 ## 6. 约束
@@ -162,6 +164,7 @@ AC：
 ## 7. 已确认的决定
 
 - 2026-10-05：先做 Web 端，不做 iOS 适配；Android 端以后考虑用 Flutter 实现，与 Web 端通过加密数据格式互通。
+- 2026-10-05：字体限定为思源黑体、Inter、JetBrains Mono；视觉规范参考 TDesign（理由见 design.md D9）。
 
 ## 8. 待确认问题
 

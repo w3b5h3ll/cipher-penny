@@ -355,7 +355,13 @@ function DangerSection() {
     <section className="card stack">
       <h2>隐私与数据</h2>
       <ul className="muted small bullets">
-        <li>账本只以 AES-256-GCM 密文保存在本机浏览器（IndexedDB）中，不会上传到任何服务器。</li>
+        <li>
+          账本只以 <code>AES-256-GCM</code> 密文保存在本机浏览器（IndexedDB）中，密钥由主密码经{' '}
+          <code>PBKDF2-SHA256</code> 派生，不会上传到任何服务器。
+        </li>
+        <li>
+          快捷记账链接：在网址后加 <code>#/add?text=午饭25</code>，打开并解锁后直接显示识别结果，可做成桌面快捷方式。
+        </li>
         <li>语音输入使用浏览器自带的语音识别服务，Chrome 会把音频发送到 Google 服务器进行识别。介意的话请改用键盘输入。</li>
         <li>清除浏览器网站数据会删除账本，请定期导出加密备份。</li>
       </ul>

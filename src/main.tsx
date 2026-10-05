@@ -1,3 +1,6 @@
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+import '@fontsource-variable/noto-sans-sc';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { session } from './state/session';

@@ -39,6 +39,7 @@ pnpm check            # typecheck + lint + test + build，提交前必须通过
 - 金额一律用整数“分”（`Cents`）；日期一律用本地 `YYYY-MM-DD` 字符串，用 `core/dates.ts` 处理，不要直接用 `new Date('YYYY-MM-DD')`（会按 UTC 解析）。
 - 状态不可变：`core/ledger.ts` 的函数返回新对象。
 - 界面文案使用简体中文；代码标识符和注释使用英文。
+- 样式只使用 `src/styles.css` 中的 CSS 变量（取值参考 TDesign 令牌），不要写死颜色、字号和圆角；不要引入 UI 组件库。字体只用 `--font-sans`（Inter + 思源黑体）和 `--font-mono`（JetBrains Mono）。
 - 新增需求或改变行为时，先更新 `docs/spec.md`，再写代码；在提交说明中引用需求编号（如 `F-QA-3`）。
 
 ## 安全红线（违反即视为缺陷）

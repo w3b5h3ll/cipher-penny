@@ -61,7 +61,23 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // vite-plugin-pwa 2 no longer implies these for autoUpdate; without them a new
+        // deploy sits in "waiting" and users keep the old version indefinitely.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        // Fonts are excluded from precache: the CJK font alone is ~100 slices / 4.5 MB.
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.destination === 'font',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'fonts',
+              expiration: { maxEntries: 200, maxAgeSeconds: 365 * 24 * 60 * 60 },
+            },
+          },
+        ],
       },
     }),
   ],
