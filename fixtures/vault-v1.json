@@ -1,0 +1,130 @@
+{
+  "description": "Interop test vector for docs/vault-format.md v1. Opening `envelope` with `password` must yield `data`.",
+  "password": "correct horse battery staple 记账",
+  "envelope": {
+    "format": "cipher-penny-vault",
+    "version": 1,
+    "kdf": {
+      "name": "PBKDF2",
+      "hash": "SHA-256",
+      "iterations": 100000,
+      "salt": "EVZ2FXEmTw9lOtpbeLIpew=="
+    },
+    "wrappedKey": {
+      "iv": "0+MzoEzk4tmlgZJX",
+      "data": "rcFQ128dmjmWuIf2hqgiki6SrdsnUHUDq4nOgRzglIaBuqCDgV4Y9UFM7CmioSjr"
+    },
+    "payload": {
+      "iv": "Yk+XHLtVz+Zss9Wr",
+      "data": "vx9laRY9MvodsyntvldXrFj/Ii5asqY8du5QrXktMIjbWaIc6TB4HqbiUDW0B+I4G0LcGiz0YuCDCP5kqQjvFfwHReHqRdflrf5iVkU2wY/Gc3zIedo7YYr6moTivMH5j1KOCTypvZaSD8ltnG+vbjTbfkNusBPVheIO5BlJshVxG91vgeX570OHnYMAv2c+Ovc8OBysWj3x/vzmK+iBrcfaLj62MXQv6G03dttIRLvc4nVAWwl4JMz5KRag4yjUKpSkWsoph5P6ve3K176JvcAlDCrm7cDEEsfxC4zIWOkoxfXuNvGJ5tP2EeqP+xywLSeMBK3MeEqjQe1W7nuBqdcyUUZFQdduWA511wESepYlv+g/4i8ZyBGdHG39knQz66SCMgLmqtOFWLcizalA7lSkkHsVlf3WVuwuHeWS/lmqeWrXRGEGRybp6VAvAEHIEQxm8KEjovbAyT2dHSCvuPsGMnQGrWPl9Jg/MZmK/cc6JLRqru5A0LGyz8s4WnSiV4ziJjJQomf0mvhubWDYWVVzKtTWggVUFhWyJEDyJAXAH9eC9zK/a0/0sU2IuFxeGmPXhQB5uI8FMrNe/sbj8e+iYER3r8RS345SayoErjgxt0Sudrpy8TdkFbieAxB1PSfCOhc5AinvnECsEbiWaaFnrgcGMNFy0tkaxP0h/oDTq+FsDVyguUU1O45MJV/xM7hn5qatMEjwSDv3mFcmeyr69Xs/nkh3MmXBWQU4WIzZktNLHOp6xnhKrCNp/1bEA+wlLRzXthh5bxNMN8L1qRbJuNycsTCEhu/uUBDVeBPD2sSt96e+Sg692QMBgMmv0euk0KzvbLV/Kqix14lvKqBjzxCqRwCVpCZbt/xWNpNS6WIopH/xhynFBb94nKmpuf/bxssH1zJSUV+YIWpQI8Ar43H0HECaLyO/AbEX3YPiKzir5WW9KqrRXMzP5FwqIQ2M2R95WOmGZmOuz/0D3P3DKpzwr+X3qnPMNSjtiPowSqbVOftsK+DhavpZJMrcW2ineEnuEizNpud+ibeFW5V9qZvHS1eyCCSyphEkNt418PL9+1F0emm+nMWWWm3eo5OlgMPDAnieGVGkoIGBzOgz+8ILF3yLknCnErWLeKe1hwhnz5h3sQ9qs6DPMvGeEAReAlvd6652juPYoLrCQvbaw1J2z8WmS0oVK8+uP7eUOjRdaKFwgiJBjbQLK4/9U4ykYGsbLVN/MjDxP2VNzeie+oftFZZnTOrwSEvrdysb7C0NHzSXERKZxgJscc6Afp+tmM7NTrqXXNPxqbm0r+JvFsVv+/Uuv4QOpYLLHAntQVF4UXiWy31kabnWRwmKtArRJLRUnoTpYj02UyLx62riKOAK+gPVYmp8xzoVcmqx/fYGjBUYesC6NimLlXkI/p2ct1O57UiYANiSgqJtNkbUSLKu1AsxThMjOzTmzcilJVN+tAPbIWUNtj/dnQeZjIUH+PvXMvb+1hYq0q+abUMfJIMQayYLpy+geSeEoclJx3nrk6mCTTWQ5C50eTySHLsvIkesBxt31JxurzKwkBJzpIZPjQ3C11z+S0D0q+t//DZkQ7BoZbwOokpRKpQY5a6ZJ+SOjUzmx8OfVvAcHboIYn3Ek2x0wifyQQRJGAUQaoIPJi1fyOR8JrwqrvUYrf90IMz4mPGvFSGpN/f8MzAaSSTmK5sMU7U6DybjqnV62TigI/L0nU5bRGsGAUx4G3oV1LF9sZWDyBJQawVhrlqH2ZSsKbqyc3yQDFFvyKbXr7lHuU9vGV9Cng77ckpoowXHIPIEBZEJ9QQDlB8lYsrU3LTMQfUnJ4UjlYDFOQsMDi8uiVjxnu55ESQTGcsnhOPt3R8Rzs9aCW9vdnD70JQPYRZZxJNasgitLo2rU7Ptj4lcJBakKTHIDPhpRAqhxF4CVpNrFcT1HHdIGNjAUG/4hfg09F28BMERtDA0vBlk+2/Hljpz4r3/BR2x3DHHIHnnY7R6vfSGYyPNirnjzxg1UoAFe3HCGSY0D7wfsqEQUscJosEp/nwhqdnCuzUu9kzHv9AO5hMJbwqwf/MNLR0PdyCql9CaoJinAGYFBlabkGJRYyyS3iXzahDIDUuQRM6Hf/wQjn5ylCguLxlx0y9bW2C7XBXQsUihoWx8wYTeojKUSd0xWREMKY6mHSW3a8Se/DOX27Lr5bxL4YxMVBEn6nT3QXTwoh1M8QySAUV/gaD0npsiQP0xLGywEThgbchuoCypwl9DNpJF25hW1AXpgMFlgur6ewgQO3AtaHn7jNMVsrt2d7df/1qIzzMjtCpiT46gM4vxJFaGNvhkUiVbwsDcVtfPC8oYur2CeIag+AlUWjg0zG7i4SIxkvH7yZ22bK/jWO6MAbCIYetYfUiYu2AGhSLPKb1XSl54+wc1JKzZKQNgdTCTMAr7hmyrisLW0X8TaCLssJ6Mi2o7QXZ/ANDRbMRTYAPGkz9nYlRR/eV53dWCCBdadNTkXW8rNvuZ0xJaIUPMRhrDrBvoC0qQuTylfSlpt2IXcCovumQtbr6nH6CsAAbbFJGg/YOLlw6XCxpe6BCwCeHQD7ICMXO0qhya2/C1BteO21nkyry5gcJng23IG/urkPTl7UOfXvMC8sdABaUDB40Ge7S3sCKsYhA+PM5KTV7VF2V7yklojN3sjgrBxNw+QDaQ9hELzaj9Uu1HYoiLkW8f1f8ERNmB"
+    },
+    "updatedAt": "2026-10-05T04:30:00.000Z"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "accounts": [
+      {
+        "id": "7d0c6a2e-1f4b-4c5e-9a3d-2b8e6f1c0a01",
+        "name": "微信",
+        "kind": "ewallet",
+        "initialBalance": 10000,
+        "archived": false
+      },
+      {
+        "id": "7d0c6a2e-1f4b-4c5e-9a3d-2b8e6f1c0a02",
+        "name": "信用卡",
+        "kind": "credit",
+        "initialBalance": -52000,
+        "archived": false
+      }
+    ],
+    "categories": [
+      {
+        "id": "5b1e9f3a-8c2d-4e7f-a1b0-3c4d5e6f7a01",
+        "name": "餐饮",
+        "type": "expense",
+        "icon": "🍜",
+        "keywords": [
+          "午饭",
+          "咖啡"
+        ],
+        "archived": false
+      },
+      {
+        "id": "5b1e9f3a-8c2d-4e7f-a1b0-3c4d5e6f7a02",
+        "name": "订阅",
+        "type": "expense",
+        "icon": "🔁",
+        "keywords": [
+          "iCloud"
+        ],
+        "archived": false
+      },
+      {
+        "id": "5b1e9f3a-8c2d-4e7f-a1b0-3c4d5e6f7a03",
+        "name": "工资",
+        "type": "income",
+        "icon": "💼",
+        "keywords": [
+          "工资"
+        ],
+        "archived": false
+      }
+    ],
+    "transactions": [
+      {
+        "id": "c3a1d2e4-5f60-4718-8a9b-0c1d2e3f4a01",
+        "type": "expense",
+        "amount": 3550,
+        "categoryId": "5b1e9f3a-8c2d-4e7f-a1b0-3c4d5e6f7a01",
+        "accountId": "7d0c6a2e-1f4b-4c5e-9a3d-2b8e6f1c0a01",
+        "date": "2026-10-05",
+        "note": "午饭",
+        "createdAt": "2026-10-05T04:30:00.000Z",
+        "updatedAt": "2026-10-05T04:30:00.000Z"
+      },
+      {
+        "id": "c3a1d2e4-5f60-4718-8a9b-0c1d2e3f4a02",
+        "type": "expense",
+        "amount": 2100,
+        "categoryId": "5b1e9f3a-8c2d-4e7f-a1b0-3c4d5e6f7a02",
+        "accountId": "7d0c6a2e-1f4b-4c5e-9a3d-2b8e6f1c0a02",
+        "date": "2026-10-01",
+        "note": "iCloud",
+        "createdAt": "2026-10-01T01:00:00.000Z",
+        "updatedAt": "2026-10-01T01:00:00.000Z",
+        "recurringId": "e9f8a7b6-c5d4-4e3f-8a1b-2c3d4e5f6a01"
+      },
+      {
+        "id": "c3a1d2e4-5f60-4718-8a9b-0c1d2e3f4a03",
+        "type": "income",
+        "amount": 1500000,
+        "categoryId": "5b1e9f3a-8c2d-4e7f-a1b0-3c4d5e6f7a03",
+        "accountId": "7d0c6a2e-1f4b-4c5e-9a3d-2b8e6f1c0a01",
+        "date": "2026-09-30",
+        "note": "9月工资",
+        "createdAt": "2026-09-30T10:00:00.000Z",
+        "updatedAt": "2026-09-30T10:00:00.000Z"
+      }
+    ],
+    "recurring": [
+      {
+        "id": "e9f8a7b6-c5d4-4e3f-8a1b-2c3d4e5f6a01",
+        "name": "iCloud 200GB",
+        "type": "expense",
+        "amount": 2100,
+        "categoryId": "5b1e9f3a-8c2d-4e7f-a1b0-3c4d5e6f7a02",
+        "accountId": "7d0c6a2e-1f4b-4c5e-9a3d-2b8e6f1c0a02",
+        "note": "iCloud",
+        "frequency": "monthly",
+        "interval": 1,
+        "startDate": "2026-01-01",
+        "active": true,
+        "lastGenerated": "2026-10-01"
+      }
+    ],
+    "settings": {
+      "autoLockMinutes": 5
+    }
+  }
+}
