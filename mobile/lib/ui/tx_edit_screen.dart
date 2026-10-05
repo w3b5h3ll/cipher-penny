@@ -7,6 +7,7 @@ import '../core/model.dart';
 import '../core/money.dart';
 import '../state/session.dart';
 import 'common.dart';
+import 'theme.dart';
 
 /// F-TX-1, F-TX-3. `id` null means a new transaction.
 class TxEditScreen extends StatefulWidget {
@@ -88,14 +89,34 @@ class _TxEditScreenState extends State<TxEditScreen> {
     navigator.pop();
   }
 
+  PreferredSizeWidget _bar(BuildContext context) => AppBar(
+        automaticallyImplyLeading: false,
+        titleSpacing: 8,
+        title: Row(children: [
+          IconBtn('‹', tooltip: '返回', bordered: false, onPressed: Navigator.of(context).pop),
+          const SizedBox(width: 4),
+          const AppLogo(),
+        ]),
+      );
+
   @override
   Widget build(BuildContext context) {
     final session = SessionScope.of(context);
     if (session.status != SessionStatus.unlocked) return const Scaffold();
     final data = session.data;
     final existing = _existing;
+    final title = existing != null ? '编辑账单' : '记一笔';
     if (widget.id != null && existing == null) {
-      return Scaffold(appBar: AppBar(), body: const Center(child: Text('账单不存在或已删除。')));
+      return Scaffold(
+        appBar: _bar(context),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: SectionCard(children: [
+            const Text('账单不存在或已删除。'),
+            Align(alignment: Alignment.centerLeft, child: OutlinedButton(onPressed: Navigator.of(context).pop, child: const Text('返回'))),
+          ]),
+        ),
+      );
     }
     final amount = parseAmount(_amount.text);
     final valid = amount != null && amount > 0 && _categoryId.isNotEmpty && _accountId.isNotEmpty;
@@ -103,43 +124,40 @@ class _TxEditScreenState extends State<TxEditScreen> {
     final rule = ruleId == null ? null : data.recurring.where((r) => r.id == ruleId).firstOrNull;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(existing != null ? '编辑账单' : '记一笔'),
-        actions: [
-          if (existing != null) IconButton(tooltip: '删除', icon: const Icon(Icons.delete_outline), onPressed: _delete),
-        ],
-      ),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        TextField(
-          controller: _amount,
-          autofocus: existing == null,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
-          decoration: const InputDecoration(labelText: '金额（元）', prefixText: '¥ ', hintText: '0.00'),
-          onChanged: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 16),
-        Row(children: [
-          Expanded(
-            child: CategoryDropdown(
-                categories: data.categories, value: _categoryId, onChanged: (id) => setState(() => _categoryId = id)),
+      appBar: _bar(context),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 64), children: [
+        SectionCard(title: title, children: [
+          Field(
+            label: '金额（元）',
+            child: TdInput(
+              controller: _amount,
+              autofocus: existing == null,
+              hint: '0.00',
+              semanticLabel: '金额',
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: TdText.headlineSmall.copyWith(fontFeatures: TdText.tabular),
+              onChanged: (_) => setState(() {}),
+            ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: AccountDropdown(
-                accounts: data.accounts, value: _accountId, onChanged: (id) => setState(() => _accountId = id)),
+          Field(
+            label: '分类',
+            child: CategoryDropdown(categories: data.categories, value: _categoryId, onChanged: (id) => setState(() => _categoryId = id)),
           ),
+          Field(
+            label: '账户',
+            child: AccountDropdown(accounts: data.accounts, value: _accountId, onChanged: (id) => setState(() => _accountId = id)),
+          ),
+          Field(label: '日期', child: DateField(value: _date, onChanged: (d) => setState(() => _date = d))),
+          Field(label: '备注', child: TdInput(controller: _note, hint: '可选', semanticLabel: '备注')),
+          if (rule != null) Muted('由周期账单「${rule.name}」自动生成。修改这一笔不会影响规则。', small: true),
+          Row(children: [
+            FilledButton(onPressed: valid ? _save : null, child: const Text('保存')),
+            const SizedBox(width: 8),
+            OutlinedButton(onPressed: Navigator.of(context).pop, child: const Text('取消')),
+            const Spacer(),
+            if (existing != null) OutlinedButton(onPressed: _delete, style: dangerButton(context), child: const Text('删除')),
+          ]),
         ]),
-        const SizedBox(height: 16),
-        DateField(value: _date, onChanged: (d) => setState(() => _date = d)),
-        const SizedBox(height: 16),
-        TextField(controller: _note, decoration: const InputDecoration(labelText: '备注', hintText: '可选')),
-        if (rule != null) ...[
-          const SizedBox(height: 12),
-          MutedText('由周期账单「${rule.name}」自动生成。修改这一笔不会影响规则。'),
-        ],
-        const SizedBox(height: 24),
-        FilledButton(onPressed: valid ? _save : null, child: const Text('保存')),
       ]),
     );
   }

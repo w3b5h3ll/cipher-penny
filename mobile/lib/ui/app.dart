@@ -7,6 +7,7 @@ import 'common.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
+import 'theme.dart';
 
 class CipherPennyApp extends StatefulWidget {
   const CipherPennyApp({super.key, required this.session});
@@ -45,7 +46,6 @@ class _CipherPennyAppState extends State<CipherPennyApp> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = ColorScheme.fromSeed(seedColor: brandColor, dynamicSchemeVariant: DynamicSchemeVariant.fidelity);
     return SessionScope(
       session: widget.session,
       child: Listener(
@@ -58,12 +58,9 @@ class _CipherPennyAppState extends State<CipherPennyApp> {
           locale: const Locale('zh', 'CN'),
           supportedLocales: const [Locale('zh', 'CN')],
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          theme: ThemeData(
-            colorScheme: scheme,
-            scaffoldBackgroundColor: const Color(0xFFF3F3F3),
-            cardTheme: const CardThemeData(elevation: 0, color: Colors.white),
-            inputDecorationTheme: const InputDecorationTheme(isDense: true),
-          ),
+          theme: buildTheme(Td.light, Brightness.light),
+          darkTheme: buildTheme(Td.dark, Brightness.dark),
+          themeMode: ThemeMode.system,
           home: const _Root(),
         ),
       ),
@@ -81,7 +78,7 @@ class _Root extends StatelessWidget {
       SessionStatus.loading => const Scaffold(body: Center(child: CircularProgressIndicator())),
       SessionStatus.error => Scaffold(
           body: Center(
-            child: Padding(padding: const EdgeInsets.all(24), child: ErrorText('无法读取本地数据：${session.errorMessage}')),
+            child: Padding(padding: const EdgeInsets.all(24), child: ErrorText('无法读取本地数据：${session.errorMessage}', small: false)),
           ),
         ),
       SessionStatus.empty => const SetupScreen(),
@@ -99,49 +96,128 @@ class _MainShell extends StatefulWidget {
 
 class _MainShellState extends State<_MainShell> {
   int _tab = 0;
-  static const _titles = ['CipherPenny', '统计', '设置'];
+  static const _tabs = ['账单', '统计', '设置'];
 
   @override
   Widget build(BuildContext context) {
+    final td = Td.of(context);
     final session = SessionScope.of(context);
-    final created = session.recurringCreated;
-    if (created > 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已自动生成 $created 笔周期账单')));
-        session.clearRecurringNotice();
-      });
-    }
     final sync = session.sync;
+    final banners = [
+      if (session.saveError != null) TdBanner(error: true, child: Text('保存失败：${session.saveError}')),
+      if (session.recurringCreated > 0)
+        TdBanner(
+          action: TextButton(onPressed: session.clearRecurringNotice, child: const Text('知道了')),
+          child: Text('已自动记入 ${session.recurringCreated} 笔周期账单。'),
+        ),
+    ];
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_titles[_tab]),
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: SizedBox(
+          height: 56,
+          child: LayoutBuilder(builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 420;
+            return Row(children: [
+              GestureDetector(
+                onTap: () => setState(() => _tab = 0),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const AppLogo(),
+                  if (!narrow) ...[const SizedBox(width: 8), Text('CipherPenny', style: TdText.titleMedium.copyWith(color: td.textPrimary))],
+                ]),
+              ),
+              SizedBox(width: narrow ? 8 : 16),
+              Expanded(
+                child: Row(children: [
+                  for (final (i, label) in _tabs.indexed)
+                    _NavTab(label: label, active: _tab == i, compact: narrow, onTap: () => setState(() => _tab = i)),
+                ]),
+              ),
+              if (sync != null && sync.error != null) ...[
+                _SyncAlert(message: sync.error!, onTap: () => setState(() => _tab = 2)),
+                const SizedBox(width: 8),
+              ],
+            ]);
+          }),
+        ),
         actions: [
-          if (sync != null)
-            IconButton(
-              tooltip: sync.syncing ? '正在同步' : (sync.error != null ? '同步失败' : '立即同步'),
-              onPressed: sync.syncing ? null : session.syncNow,
-              icon: sync.syncing
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : Icon(sync.error != null ? Icons.sync_problem : Icons.cloud_done_outlined,
-                      color: sync.error != null ? Theme.of(context).colorScheme.error : null),
-            ),
-          IconButton(tooltip: '锁定', icon: const Icon(Icons.lock_outline), onPressed: session.lock),
+          IconBtn('🔒', tooltip: '立即锁定', bordered: false, onPressed: session.lock),
+          const SizedBox(width: 8),
         ],
       ),
-      body: IndexedStack(index: _tab, children: [
-        HomeScreen(onOpenSettings: () => setState(() => _tab = 2)),
-        const StatsScreen(),
-        const SettingsScreen(),
+      body: Column(children: [
+        if (banners.isNotEmpty)
+          Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 0), child: Gap(gap: 8, children: banners)),
+        Expanded(
+          child: IndexedStack(index: _tab, children: const [HomeScreen(), StatsScreen(), SettingsScreen()]),
+        ),
       ]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: '账单'),
-          NavigationDestination(icon: Icon(Icons.pie_chart_outline), selectedIcon: Icon(Icons.pie_chart), label: '统计'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: '设置'),
-        ],
+    );
+  }
+}
+
+/// `.topbar nav a`
+class _NavTab extends StatelessWidget {
+  const _NavTab({required this.label, required this.active, required this.compact, required this.onTap});
+  final String label;
+  final bool active;
+  final bool compact;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final td = Td.of(context);
+    return Semantics(
+      selected: active,
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(width: 2, color: active ? td.brand : Colors.transparent)),
+          ),
+          child: Text(
+            label,
+            style: TdText.body.copyWith(
+              color: active ? td.brand : td.textSecondary,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// `.topbar .sync-alert`
+class _SyncAlert extends StatelessWidget {
+  const _SyncAlert({required this.message, required this.onTap});
+  final String message;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final td = Td.of(context);
+    return Tooltip(
+      message: message,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: td.errorLight,
+            border: Border.all(color: td.error),
+            borderRadius: BorderRadius.circular(Td.radiusDefault),
+          ),
+          child: Text('同步失败', style: TdText.mark.copyWith(color: td.error)),
+        ),
       ),
     );
   }

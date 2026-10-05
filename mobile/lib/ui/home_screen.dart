@@ -5,12 +5,12 @@ import '../core/money.dart';
 import '../core/stats.dart';
 import 'common.dart';
 import 'quick_add.dart';
+import 'theme.dart';
 import 'tx_edit_screen.dart';
 
 /// F-TX-2: the month's spending grouped by day, with quick add on top.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.onOpenSettings});
-  final VoidCallback onOpenSettings;
+  const HomeScreen({super.key});
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -20,101 +20,114 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final td = Td.of(context);
     final session = SessionScope.of(context);
     final data = session.data;
     final lookups = Lookups(data);
     final today = todayISO();
     final monthTxs = transactionsInMonth(data.transactions, _month);
     final groups = groupByDate(monthTxs);
-    final sync = session.sync;
 
     return RefreshIndicator(
       onRefresh: session.syncNow,
       child: ListView(
-        padding: const EdgeInsets.only(top: 6, bottom: 24),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 64),
         children: [
-          if (sync?.error != null)
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: ListTile(
-                leading: const Icon(Icons.sync_problem),
-                title: Text(sync!.foreign ? '同步已暂停' : '同步失败'),
-                subtitle: Text(sync.error!, maxLines: 2, overflow: TextOverflow.ellipsis),
-                onTap: widget.onOpenSettings,
-              ),
-            ),
-          if (session.saveError != null)
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: ListTile(leading: const Icon(Icons.error_outline), title: Text('保存失败：${session.saveError}')),
-            ),
-          const QuickAdd(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(children: [
+          Gap(children: [
+            const QuickAdd(),
+            Row(children: [
               MonthSwitcher(month: _month, onChanged: (m) => setState(() => _month = m)),
               const Spacer(),
-              TextButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text('手动记一笔'),
+              OutlinedButton(
                 onPressed: () => Navigator.of(context).push(TxEditScreen.route()),
+                child: const Text('+ 手动记一笔'),
               ),
-              const SizedBox(width: 8),
             ]),
-          ),
-          SummaryBar(spending: spending(monthTxs), periods: daysElapsed(_month, today), averageLabel: '日均'),
-          if (groups.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(32),
-              child: Center(child: MutedText('这个月还没有账单')),
-            ),
-          for (final g in groups)
-            SectionCard(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              children: [
-                Row(children: [
-                  Text(formatDayLabel(g.date, today), style: const TextStyle(fontWeight: FontWeight.w600)),
-                  const Spacer(),
-                  MutedText('支出 ${formatMoney(g.total)}'),
-                ]),
-                for (final t in g.items)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: Text(lookups.category(t.categoryId)?.icon ?? '❔', style: const TextStyle(fontSize: 22)),
-                    title: Row(children: [
-                      Flexible(child: Text(lookups.category(t.categoryId)?.name ?? '未知分类', overflow: TextOverflow.ellipsis)),
-                      if (t.recurringId != null) ...[
-                        const SizedBox(width: 6),
-                        const _Badge('周期'),
-                      ],
+            SummaryBar(spending: spending(monthTxs), periods: daysElapsed(_month, today), averageLabel: '日均'),
+            if (groups.isEmpty)
+              const Padding(padding: EdgeInsets.symmetric(vertical: 32), child: Muted('这个月还没有账单', textAlign: TextAlign.center)),
+            for (final g in groups)
+              TdCard(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Row(children: [
+                      Text(formatDayLabel(g.date, today), style: TdText.titleSmall),
+                      const Spacer(),
+                      Text('支出 ${formatMoney(g.total)}', style: TdText.mark.copyWith(color: td.textSecondary)),
                     ]),
-                    subtitle: Text(
-                      [t.note, lookups.account(t.accountId)?.name ?? ''].where((s) => s.isNotEmpty).join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: Text(formatCents(t.amount),
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFeatures: [FontFeature.tabularFigures()])),
-                    onTap: () => Navigator.of(context).push(TxEditScreen.route(id: t.id)),
                   ),
-              ],
-            ),
+                  for (final t in g.items)
+                    _TxRow(
+                      icon: lookups.category(t.categoryId)?.icon ?? '❔',
+                      title: lookups.category(t.categoryId)?.name ?? '未知分类',
+                      recurring: t.recurringId != null,
+                      subtitle: [t.note, lookups.account(t.accountId)?.name ?? ''].where((s) => s.isNotEmpty).join(' · '),
+                      amount: formatCents(t.amount),
+                      onTap: () => Navigator.of(context).push(TxEditScreen.route(id: t.id)),
+                    ),
+                ]),
+              ),
+          ]),
         ],
       ),
     );
   }
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge(this.text);
-  final String text;
+/// `.tx-row`
+class _TxRow extends StatelessWidget {
+  const _TxRow({
+    required this.icon,
+    required this.title,
+    required this.recurring,
+    required this.subtitle,
+    required this.amount,
+    required this.onTap,
+  });
+  final String icon;
+  final String title;
+  final bool recurring;
+  final String subtitle;
+  final String amount;
+  final VoidCallback onTap;
+
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-        decoration: BoxDecoration(color: brandColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)),
-        child: const Text('周期', style: TextStyle(fontSize: 11, color: brandColor)),
-      );
+  Widget build(BuildContext context) {
+    final td = Td.of(context);
+    return InkWell(
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 56),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: td.bgSecondaryContainer, borderRadius: BorderRadius.circular(Td.radiusMedium)),
+              child: Text(icon, style: const TextStyle(fontSize: 18)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Flexible(
+                    child: Text(title, overflow: TextOverflow.ellipsis, style: TdText.body.copyWith(fontWeight: FontWeight.w500)),
+                  ),
+                  if (recurring) ...[const SizedBox(width: 6), const TdBadge('周期')],
+                ]),
+                if (subtitle.isNotEmpty)
+                  Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TdText.mark.copyWith(color: td.textSecondary)),
+              ]),
+            ),
+            const SizedBox(width: 12),
+            Text(amount, style: TdText.body.copyWith(fontWeight: FontWeight.w600, fontFeatures: TdText.tabular)),
+          ]),
+        ),
+      ),
+    );
+  }
 }

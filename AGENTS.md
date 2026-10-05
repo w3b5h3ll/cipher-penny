@@ -47,6 +47,7 @@ flutter build apk --release --split-per-abi
 - 状态不可变：`core/ledger.ts` 的函数返回新对象。
 - 界面文案使用简体中文；代码标识符和注释使用英文。
 - 样式只使用 `src/styles.css` 中的 CSS 变量（取值参考 TDesign 令牌），不要写死颜色、字号和圆角；不要引入 UI 组件库。字体只用 `--font-sans`（Inter + 思源黑体）和 `--font-mono`（JetBrains Mono）。
+- Android 端样式只用 `mobile/lib/ui/theme.dart` 的 `Td` 令牌（`Td.of(context)`，取值与 `styles.css` 相同）和 `TdText` 字号，共用组件在 `ui/common.dart`（对应 Web 的 `.card`、`.field`、`.banner`、`.segmented` 等）。不要写死颜色，不要用 Material `Icons`：图标用应用图标和与 Web 相同的文字符号（‹ › ✕ ▾ 🔒）及分类 emoji。改 Web 界面的视觉时同步改 Android 端。
 - 新增需求或改变行为时，先更新 `docs/spec.md`，再写代码；在提交说明中引用需求编号（如 `F-QA-3`）。
 
 ## 安全红线（违反即视为缺陷）

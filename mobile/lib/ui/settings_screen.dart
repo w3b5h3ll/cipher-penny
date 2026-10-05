@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/ledger.dart';
 import 'common.dart';
 import 'sync_widgets.dart';
+import 'theme.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -19,41 +20,43 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final td = Td.of(context);
     final session = SessionScope.of(context);
     final settings = session.data.settings;
-    return ListView(padding: const EdgeInsets.only(top: 6, bottom: 24), children: [
-      const SyncSection(),
-      SectionCard(title: '安全', children: [
-        DropdownButtonFormField<int>(
-          key: ValueKey(settings.autoLockMinutes),
-          initialValue: settings.autoLockMinutes,
-          decoration: const InputDecoration(labelText: '闲置自动锁定'),
-          items: [
-            for (final m in [1, 5, 15, 30, 60]) DropdownMenuItem(value: m, child: Text('$m 分钟')),
-            const DropdownMenuItem(value: 0, child: Text('关闭')),
-          ],
-          onChanged: (m) {
-            if (m != null) session.update((d) => updateSettings(d, {'autoLockMinutes': m}));
-          },
-        ),
-        const SizedBox(height: 8),
-        const MutedText('App 在前台闲置或切到后台超过这个时间后自动锁定。'),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(icon: const Icon(Icons.lock_outline), label: const Text('立即锁定'), onPressed: session.lock),
+    final code = TdText.mono.copyWith(fontSize: 12, color: td.textPrimary);
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 64), children: [
+      Gap(children: [
+        SectionCard(title: '安全', children: [
+          Field(
+            label: '闲置自动锁定',
+            hint: 'App 在前台闲置或切到后台超过这个时间后自动锁定。',
+            child: IntSelect(
+              semanticLabel: '闲置自动锁定',
+              value: settings.autoLockMinutes,
+              options: const {1: '1 分钟', 5: '5 分钟', 15: '15 分钟', 30: '30 分钟', 60: '60 分钟', 0: '关闭'},
+              onChanged: (m) => session.update((d) => updateSettings(d, {'autoLockMinutes': m})),
+            ),
+          ),
+        ]),
+        const SyncSection(),
+        SectionCard(title: '隐私与数据', children: [
+          Bullets([
+            Text.rich(TextSpan(children: [
+              const TextSpan(text: '账本只以 '),
+              TextSpan(text: 'AES-256-GCM', style: code),
+              const TextSpan(text: ' 密文保存在本机的应用私有目录中，密钥由主密码经 '),
+              TextSpan(text: 'PBKDF2-SHA256', style: code),
+              const TextSpan(text: ' 派生。主密码和明文不会上传到任何服务器；开启同步后，只有密文会上传到你自己的 GitHub 私有仓库。'),
+            ])),
+            const Text('Android 版暂不支持修改主密码、管理账户和分类、周期账单规则和备份导入导出，请在网页版操作，改动会通过同步过来。'),
+            const Text('卸载 App 或清除应用数据会删除本机账本；开启了同步的话可以再从 GitHub 恢复。'),
+          ]),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton(onPressed: () => _wipe(context), style: dangerButton(context), child: const Text('清空本地数据')),
+          ),
+        ]),
       ]),
-      SectionCard(title: '数据', children: [
-        const MutedText('Android 版目前不支持修改主密码、管理账户和分类、周期账单规则和备份导入导出，请在网页版操作，改动会通过同步过来。'),
-        const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: () => _wipe(context),
-          style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-          child: const Text('清空本地数据'),
-        ),
-      ]),
-      const Padding(
-        padding: EdgeInsets.all(16),
-        child: Center(child: MutedText('CipherPenny · 数据只以密文形式保存在本机和你的 GitHub 私有仓库')),
-      ),
     ]);
   }
 }

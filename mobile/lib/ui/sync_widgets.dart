@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../crypto/vault_crypto.dart';
 import '../state/session.dart';
 import 'common.dart';
+import 'theme.dart';
 
 const _tokenUrl = 'https://github.com/settings/personal-access-tokens/new';
 
@@ -12,23 +13,38 @@ class _SyncHelp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const MutedText('1. 在 GitHub 新建一个私有仓库专门放数据，例如 cipher-penny-data。不要用存放代码的公开仓库。'),
-      const SizedBox(height: 4),
-      const MutedText('2. 创建 fine-grained 令牌：Repository access 选 Only select repositories 并只勾选这个仓库；'
-          'Permissions 里把 Contents 设为 Read and write。'),
-      Row(children: [
-        const Expanded(child: SelectableText(_tokenUrl, style: TextStyle(fontSize: 12))),
-        IconButton(
-          tooltip: '复制链接',
-          icon: const Icon(Icons.copy, size: 18),
-          onPressed: () {
-            Clipboard.setData(const ClipboardData(text: _tokenUrl));
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('链接已复制')));
-          },
+    final td = Td.of(context);
+    final strong = TextStyle(fontWeight: FontWeight.w600, color: td.textPrimary);
+    final code = TdText.mono.copyWith(fontSize: 12, color: td.textPrimary);
+    return Bullets([
+      Text.rich(TextSpan(children: [
+        const TextSpan(text: '在 GitHub 新建一个'),
+        TextSpan(text: '私有', style: strong),
+        const TextSpan(text: '仓库专门放数据，例如 '),
+        TextSpan(text: 'cipher-penny-data', style: code),
+        const TextSpan(text: '。不要用存放代码的公开仓库。'),
+      ])),
+      Text.rich(TextSpan(children: [
+        WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: GestureDetector(
+            onTap: () {
+              Clipboard.setData(const ClipboardData(text: _tokenUrl));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('链接已复制，请在浏览器中打开')));
+            },
+            child: Text('创建 fine-grained 令牌（点按复制链接）', style: TdText.mark.copyWith(color: td.brand)),
+          ),
         ),
-      ]),
-      const MutedText('3. 把令牌粘贴到下面。令牌用你的数据密钥加密后只保存在这台设备上，不会进入同步文件。'),
+        const TextSpan(text: '：Repository access 选 '),
+        TextSpan(text: 'Only select repositories', style: code),
+        const TextSpan(text: ' 并只勾选这个仓库；Permissions 里把 '),
+        TextSpan(text: 'Contents', style: code),
+        const TextSpan(text: ' 设为 '),
+        TextSpan(text: 'Read and write', style: code),
+        const TextSpan(text: '。'),
+      ])),
+      const Text('把生成的令牌粘贴到下面。令牌用你的数据密钥加密后只保存在这台设备上，不会进入同步文件。'),
     ]);
   }
 }
@@ -42,30 +58,31 @@ class _SyncFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      TextField(
-        controller: repo,
-        autocorrect: false,
-        enableSuggestions: false,
-        keyboardType: TextInputType.url,
-        decoration: const InputDecoration(labelText: '仓库', hintText: 'owner/cipher-penny-data'),
-        onChanged: (_) => onChanged(),
+    return Gap(children: [
+      Field(
+        label: '仓库',
+        child: TdInput(
+          controller: repo,
+          hint: 'owner/cipher-penny-data',
+          semanticLabel: '仓库',
+          keyboardType: TextInputType.url,
+          onChanged: (_) => onChanged(),
+        ),
       ),
-      TextField(
-        controller: path,
-        autocorrect: false,
-        enableSuggestions: false,
-        keyboardType: TextInputType.url,
-        decoration: const InputDecoration(labelText: '文件路径', hintText: defaultSyncPath),
+      Field(
+        label: '文件路径',
+        child: TdInput(controller: path, hint: defaultSyncPath, semanticLabel: '文件路径', keyboardType: TextInputType.url),
       ),
-      TextField(
-        controller: token,
-        obscureText: true,
-        autocorrect: false,
-        enableSuggestions: false,
-        keyboardType: TextInputType.visiblePassword,
-        decoration: const InputDecoration(labelText: 'GitHub 令牌', hintText: 'github_pat_…'),
-        onChanged: (_) => onChanged(),
+      Field(
+        label: 'GitHub 令牌',
+        child: TdInput(
+          controller: token,
+          hint: 'github_pat_…',
+          semanticLabel: 'GitHub 令牌',
+          obscure: true,
+          keyboardType: TextInputType.visiblePassword,
+          onChanged: (_) => onChanged(),
+        ),
       ),
     ]);
   }
@@ -87,7 +104,7 @@ mixin _SyncForm<T extends StatefulWidget> on State<T> {
   }
 }
 
-/// F-SYNC-1, F-SYNC-3, F-SYNC-7, F-SYNC-8
+/// F-SYNC-1, F-SYNC-3, F-SYNC-7, F-SYNC-8, F-SYNC-9
 class SyncSection extends StatefulWidget {
   const SyncSection({super.key});
   @override
@@ -145,13 +162,14 @@ class _SyncSectionState extends State<SyncSection> with _SyncForm {
     if (sync == null) {
       final canConnect = repo.text.trim().isNotEmpty && token.text.trim().isNotEmpty && !_busy;
       return SectionCard(title: '同步', children: [
-        const MutedText('把加密后的账本存到你自己的 GitHub 私有仓库，多台设备之间自动合并。GitHub 上只有密文，没有主密码无法读取。'),
-        const SizedBox(height: 8),
+        const Muted('把加密后的账本存到你自己的 GitHub 私有仓库，多台设备之间自动合并。GitHub 上只有密文，没有主密码无法读取。', small: true),
         const _SyncHelp(),
         _SyncFields(repo: repo, path: path, token: token, onChanged: () => setState(() {})),
-        if (_error != null) ...[const SizedBox(height: 8), ErrorText(_error!)],
-        const SizedBox(height: 12),
-        FilledButton(onPressed: canConnect ? _connect : null, child: Text(_busy ? '正在检查仓库…' : '开启同步')),
+        if (_error != null) ErrorText(_error!),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton(onPressed: canConnect ? _connect : null, child: Text(_busy ? '正在检查仓库…' : '开启同步')),
+        ),
       ]);
     }
     final status = sync.syncing
@@ -160,28 +178,28 @@ class _SyncSectionState extends State<SyncSection> with _SyncForm {
             ? '上次同步：${_localTime(sync.lastSyncedAt!)}'
             : '尚未同步';
     return SectionCard(title: '同步', children: [
-      Text('同步到 ${sync.repo} 的 ${sync.path}'),
-      const SizedBox(height: 4),
-      MutedText(status),
-      if (sync.error != null && !sync.foreign) ...[const SizedBox(height: 8), ErrorText('同步失败：${sync.error}')],
-      if (sync.foreign) ...[
-        const SizedBox(height: 8),
-        ErrorText(sync.error ?? ''),
-        const SizedBox(height: 4),
-        const MutedText('如果仓库里的文件来自你以前创建的另一个账本，可以用这台设备的数据覆盖它；'
-            '如果想改用仓库里的数据，请清空本地数据，然后选择“从 GitHub 恢复”。'),
-        const SizedBox(height: 8),
-        OutlinedButton(
-          onPressed: _busy ? null : _overwrite,
-          style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-          child: const Text('用本机数据覆盖 GitHub 上的文件'),
+      Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 4, runSpacing: 4, children: [
+        Text('同步到', style: TdText.mark),
+        Code(sync.repo),
+        Text('的', style: TdText.mark),
+        Code(sync.path),
+      ]),
+      Muted(status, small: true),
+      if (sync.error != null && !sync.foreign) ErrorText('同步失败：${sync.error}'),
+      if (sync.foreign)
+        TdBanner(
+          child: Gap(gap: 8, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            ErrorText(sync.error ?? ''),
+            Text(
+              '如果仓库里的文件来自你以前创建的另一个账本，可以用这台设备的数据覆盖它；如果想改用仓库里的数据，请清空本地数据，然后选择“从 GitHub 恢复”。',
+              style: TdText.mark,
+            ),
+            OutlinedButton(onPressed: _busy ? null : _overwrite, style: dangerButton(context), child: const Text('用本机数据覆盖 GitHub 上的文件')),
+          ]),
         ),
-      ],
-      if (_error != null) ...[const SizedBox(height: 8), ErrorText(_error!)],
-      const SizedBox(height: 12),
-      Row(children: [
+      if (_error != null) ErrorText(_error!),
+      Wrap(spacing: 8, runSpacing: 8, children: [
         FilledButton(onPressed: _busy || sync.syncing ? null : () => _run(session.syncNow), child: const Text('立即同步')),
-        const SizedBox(width: 12),
         OutlinedButton(onPressed: _busy ? null : _disconnect, child: const Text('断开同步')),
       ]),
     ]);
@@ -236,24 +254,26 @@ class _RestoreFromGitHubState extends State<RestoreFromGitHub> with _SyncForm {
 
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const MutedText('填写在其他设备上开启同步时使用的仓库，以及令牌（可以和其他设备共用一个）。'),
-      const SizedBox(height: 8),
+    return Gap(gap: 16, children: [
+      const Muted('填写在其他设备上开启同步时使用的仓库，以及这台设备专用的令牌（也可以和其他设备共用一个）。', small: true),
       const _SyncHelp(),
       _SyncFields(repo: repo, path: path, token: token, onChanged: () => setState(() {})),
-      TextField(
-        controller: _password,
-        obscureText: true,
-        enableSuggestions: false,
-        autocorrect: false,
-        decoration: const InputDecoration(labelText: '主密码'),
-        onChanged: (_) => setState(() {}),
-        onSubmitted: (_) => _submit(),
+      Field(
+        label: '主密码',
+        child: TdInput(
+          controller: _password,
+          obscure: true,
+          semanticLabel: '主密码',
+          onChanged: (_) => setState(() {}),
+          onSubmitted: _submit,
+        ),
       ),
-      if (_error != null) ...[const SizedBox(height: 8), ErrorText(_error!)],
-      const SizedBox(height: 16),
-      FilledButton(onPressed: _canSubmit ? _submit : null, child: Text(_busy ? '正在下载并解密…' : '恢复')),
-      TextButton(onPressed: _busy ? null : widget.onCancel, child: const Text('取消')),
+      if (_error != null) ErrorText(_error!, small: false),
+      Row(children: [
+        FilledButton(onPressed: _canSubmit ? _submit : null, child: Text(_busy ? '正在下载并解密…' : '恢复')),
+        const SizedBox(width: 8),
+        OutlinedButton(onPressed: _busy ? null : widget.onCancel, child: const Text('取消')),
+      ]),
     ]);
   }
 }

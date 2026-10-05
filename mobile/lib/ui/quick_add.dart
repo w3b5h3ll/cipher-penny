@@ -6,6 +6,7 @@ import '../core/model.dart';
 import '../core/money.dart';
 import '../core/parser/parse.dart';
 import 'common.dart';
+import 'theme.dart';
 
 class _DraftForm {
   _DraftForm({required int amount, required this.categoryId, required this.accountId, required this.date, required String note})
@@ -113,49 +114,49 @@ class _QuickAddState extends State<QuickAdd> {
   Widget build(BuildContext context) {
     final data = SessionScope.of(context).data;
     return SectionCard(children: [
-      TextField(
-        controller: _text,
-        minLines: 1,
-        maxLines: 4,
-        textInputAction: TextInputAction.done,
-        decoration: InputDecoration(
-          hintText: '说或输入：昨天打车28，晚上和朋友吃饭260',
-          border: const OutlineInputBorder(),
-          suffixIcon: IconButton(
-            tooltip: '识别',
-            icon: const Icon(Icons.auto_awesome),
-            color: brandColor,
-            onPressed: _parse,
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: TdInput(
+            controller: _text,
+            minLines: 2,
+            maxLines: 5,
+            semanticLabel: '快速记账',
+            hint: '说或输入：昨天打车28，晚上和朋友吃饭260',
+            style: TdText.body.copyWith(fontSize: 16, height: 24 / 16),
+            textInputAction: TextInputAction.done,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: _parse,
           ),
         ),
-        onSubmitted: (_) => _parse(),
-      ),
-      for (final d in _drafts) ...[
-        const SizedBox(height: 12),
-        _DraftCard(
-          key: ObjectKey(d),
-          draft: d,
-          data: data,
-          onChanged: () => setState(() {}),
-          onRemove: () => setState(() {
-            _drafts.remove(d);
-            d.dispose();
-          }),
-        ),
-      ],
-      if (_drafts.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          TextButton(onPressed: () => setState(_clearDrafts), child: const Text('取消')),
-          const SizedBox(width: 8),
-          FilledButton(onPressed: _invalid ? null : _saveAll, child: Text('保存 ${_drafts.length} 笔')),
+        const SizedBox(width: 8),
+        FilledButton(onPressed: _text.text.trim().isEmpty ? null : _parse, child: const Text('识别')),
+      ]),
+      const Muted('语音记账可以使用输入法自带的语音输入。', small: true),
+      if (_drafts.isNotEmpty)
+        Gap(gap: 8, children: [
+          for (final d in _drafts)
+            _DraftCard(
+              key: ObjectKey(d),
+              draft: d,
+              data: data,
+              onChanged: () => setState(() {}),
+              onRemove: () => setState(() {
+                _drafts.remove(d);
+                d.dispose();
+              }),
+            ),
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            OutlinedButton(onPressed: () => setState(_clearDrafts), child: const Text('取消')),
+            const SizedBox(width: 8),
+            FilledButton(onPressed: _invalid ? null : _saveAll, child: Text('保存 ${_drafts.length} 笔')),
+          ]),
         ]),
-      ],
-      if (_message != null) ...[const SizedBox(height: 8), MutedText(_message!)],
+      if (_message != null) Muted(_message!, small: true),
     ]);
   }
 }
 
+/// `.draft`: secondary background with a brand stripe on the left.
 class _DraftCard extends StatelessWidget {
   const _DraftCard({super.key, required this.draft, required this.data, required this.onChanged, required this.onRemove});
   final _DraftForm draft;
@@ -165,78 +166,74 @@ class _DraftCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final td = Td.of(context);
     final amount = parseAmount(draft.amount.text);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(children: [
-        Row(children: [
-          Expanded(
-            child: TextField(
-              controller: draft.amount,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              decoration: InputDecoration(
-                prefixText: '¥ ',
-                isDense: true,
-                errorText: amount == null || amount <= 0 ? '金额无效' : null,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(Td.radiusMedium),
+      child: Container(
+        decoration: BoxDecoration(
+          color: td.bgSecondaryContainer,
+          border: Border.all(color: td.stroke),
+          borderRadius: BorderRadius.circular(Td.radiusMedium),
+        ),
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Container(width: 3, color: td.brand),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Gap(gap: 8, children: [
+                  Row(children: [
+                    Expanded(
+                      child: TdInput(
+                        controller: draft.amount,
+                        semanticLabel: '金额',
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: TdText.body.copyWith(fontWeight: FontWeight.w600, fontFeatures: TdText.tabular),
+                        invalid: amount == null || amount <= 0,
+                        onChanged: (_) => onChanged(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconBtn('✕', tooltip: '删除这条', onPressed: onRemove),
+                  ]),
+                  Row(children: [
+                    Expanded(
+                      child: CategoryDropdown(
+                        categories: data.categories,
+                        value: draft.categoryId,
+                        onChanged: (id) {
+                          draft.categoryId = id;
+                          onChanged();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: AccountDropdown(
+                        accounts: data.accounts,
+                        value: draft.accountId,
+                        onChanged: (id) {
+                          draft.accountId = id;
+                          onChanged();
+                        },
+                      ),
+                    ),
+                  ]),
+                  DateField(
+                    value: draft.date,
+                    onChanged: (date) {
+                      draft.date = date;
+                      onChanged();
+                    },
+                  ),
+                  TdInput(controller: draft.note, hint: '备注', semanticLabel: '备注'),
+                ]),
               ),
-              onChanged: (_) => onChanged(),
             ),
-          ),
-          IconButton(tooltip: '删除这条', icon: const Icon(Icons.close), onPressed: onRemove),
-        ]),
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: Column(children: [
-            Row(children: [
-              Expanded(
-                child: CategoryDropdown(
-                  categories: data.categories,
-                  value: draft.categoryId,
-                  onChanged: (id) {
-                    draft.categoryId = id;
-                    onChanged();
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: AccountDropdown(
-                  accounts: data.accounts,
-                  value: draft.accountId,
-                  onChanged: (id) {
-                    draft.accountId = id;
-                    onChanged();
-                  },
-                ),
-              ),
-            ]),
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(
-                child: DateField(
-                  value: draft.date,
-                  onChanged: (date) {
-                    draft.date = date;
-                    onChanged();
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: draft.note,
-                  decoration: const InputDecoration(labelText: '备注', isDense: true),
-                ),
-              ),
-            ]),
           ]),
         ),
-      ]),
+      ),
     );
   }
 }

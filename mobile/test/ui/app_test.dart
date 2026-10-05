@@ -32,7 +32,8 @@ void main() {
     expect(find.text('这个月还没有账单'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, '午饭 35，打车 28');
-    await tester.tap(find.byTooltip('识别'));
+    await tester.pump();
+    await tester.tap(find.text('识别'));
     await tester.pump();
     expect(find.text('保存 2 笔'), findsOneWidget);
     await tester.tap(find.text('保存 2 笔'));
@@ -50,10 +51,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('开启同步'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('锁定'));
+    await tester.tap(find.byTooltip('立即锁定'));
     await until(tester, () => session.status == SessionStatus.locked);
     expect(find.text('账本已锁定'), findsOneWidget);
     expect(File('${dir.path}/vault.json').readAsStringSync(), isNot(contains('午饭')));
+
+    session.dispose();
+    dir.deleteSync(recursive: true);
+  });
+
+  testWidgets('dark mode uses the dark tokens', (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await tester.binding.setSurfaceSize(const Size(400, 860));
+    final dir = Directory.systemTemp.createTempSync('cipher_penny_ui');
+    final session = Session(VaultStore(dir), iterations: minIterations);
+    await tester.runAsync(session.init);
+    await tester.runAsync(() => session.create('pass-word-1'));
+    await tester.pumpWidget(CipherPennyApp(session: session));
+    await tester.pump();
+
+    final context = tester.element(find.text('这个月还没有账单'));
+    expect(Theme.of(context).brightness, Brightness.dark);
+    expect(Theme.of(context).scaffoldBackgroundColor, const Color(0xFF181818));
+    expect(tester.takeException(), isNull);
 
     session.dispose();
     dir.deleteSync(recursive: true);

@@ -72,6 +72,7 @@
 - [x] 存储、GitHub 客户端、同步一轮、会话状态机（`test/remote`、`test/state`：与 `sync.test.ts` 相同的 11 个场景）
 - [x] 界面：创建、解锁、从 GitHub 恢复、快速记账、账单列表、编辑删除、统计、设置（`test/ui` 冒烟测试；Android 36 模拟器上跑 release 包：创建账本、记账、锁定再解锁数据仍在、统计正确、用无效令牌连 GitHub 显示“令牌无效”）
 - [x] Android 配置：应用名、图标、网络权限、关闭系统备份
+- [x] 视觉与 Web 端统一：评估 TDesign Flutter 后不采用，改为用同一套 TDesign 令牌设定主题（亮色 / 暗色）、打包 Inter 和 JetBrains Mono、图标改用文字符号和 emoji，布局对照 `styles.css`（D13；`test/ui` 增加暗色用例；模拟器上逐页截图核对）
 - [x] CI：`flutter analyze` 和 `flutter test`
 - [ ] 在 Paul 的手机上安装，用真实私有仓库与 Web 端双向同步（需要 Paul 操作）
 
